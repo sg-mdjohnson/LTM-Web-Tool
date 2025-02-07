@@ -1,0 +1,70 @@
+# Cursor Rules for F5 LTM Web Application
+
+# General Project Rules
+- The application must use Flask/Dash/Streamlit with React.js for the frontend, including Lucide for images.
+- The backend should be Django unless it is too bloated, in which case Flask is an alternative.
+- SQLite should be the default database, but optional support for PostgreSQL and MongoDB must be available.
+
+# Authentication & Security
+- The app must use local authentication but allow optional LDAP/Active Directory integration.
+- OAuth2/OpenID is not required initially but should be considered for future implementation (TODO).
+- Session management should use traditional session cookies.
+- Login sessions should expire after 30 minutes, configurable up to 60 minutes in 1-minute increments.
+- Password policies should be left to the user for now, with a TODO for stronger password policies.
+- RBAC must be enforced with roles: Admin and Read-Only, with configurable permissions per role.
+- Users should not be able to log in after 3 failed attempts, with a 5-minute reset window.
+
+# F5 LTM Communication & Configuration Management
+- The application must support both F5 iControl REST API and SSH (TMSH commands) for flexibility.
+- Only single-device updates should be allowed; bulk updates are not permitted.
+- The app must not auto-discover new F5 LTM devices, but manual addition should be available.
+- Configurations should be staged for approval before being applied.
+- A rollback mechanism must be implemented (TODO).
+- Configuration history must be stored for comparison.
+
+# Dashboard & CLI Integration
+- The dashboard must have real-time updates with an option to disable or change refresh time in 10-second increments.
+- A dark mode/light mode toggle must be included, along with dashboard theme customization.
+- The CLI must be integrated with the dashboard for F5 LTM interactions.
+- The CLI and dashboard must support executing the following TMSH commands:
+  - list ltm virtual
+  - list ltm rule
+  - list ltm pool
+  - list ltm monitor tcp
+  - list ltm persistence cookie
+  - list ltm profile client-ssl
+  - list ltm node
+  - load sys config merge from-terminal
+
+# Logging & Error Handling
+- Successful logins, failed logins, and user actions must be logged.
+- A log retention policy of 30 days must be enforced.
+- Configuration validation should be optional and enabled per user requirements.
+- VIP-to-IP mappings should be retrievable, but associated DNS A records should only be fetched with user permission.
+- Checking for missing A records should be optional and only performed if enabled by the user.
+
+# Timeouts & Retry Mechanisms
+- SSH and API requests should have configurable timeout settings.
+- If an API or SSH request times out, the system should:
+  - Retry the request (configurable retry count in the future, TODO).
+  - Provide an error message to the user with troubleshooting steps.
+
+# Excel & SharePoint Integration
+- The app must support importing and manipulating configurations in CSV and embedded Excel files with varying formats.
+- Exporting modified configurations should be supported in Excel, CSV, and JSON formats with filtering options.
+- The app must support pulling configuration files from SharePoint via a direct API with credentials and allow manual file uploads.
+
+# Deployment & Installation
+- The app should be installable via an INSTALL file; it must not be packaged as an RPM for SUSE.
+- The app should support Docker configuration but not Podman.
+- If installed on a Linux server, the app must run as a systemd service with built-in installation scripts.
+- The README.md file must be updated with the latest information about the project, including installation, usage, and feature updates.
+
+# TODOs
+- Implement rollback mechanism for failed configurations.
+- Define automation requirements for future expansion.
+- Determine reporting requirements and add scheduled exports.
+- Add optional OAuth2/OpenID authentication support.
+- Implement optional password policy enforcement.
+- Introduce configurable retry logic for timeouts and connection failures.
+
