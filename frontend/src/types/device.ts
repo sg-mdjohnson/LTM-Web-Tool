@@ -4,6 +4,7 @@ export interface Device {
   host: string;
   username: string;
   description?: string;
-  status: 'active' | 'inactive' | 'error' | 'unknown';
+  status?: 'active' | 'inactive' | 'error' | 'unknown';
   last_used?: string;
+  lastSync?: string;
 } 

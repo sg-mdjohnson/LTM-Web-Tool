@@ -17,15 +17,15 @@ import {
   FormErrorMessage,
 } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
-import { Device } from '../../types/device';
+import api from '../../utils/api';
 
 interface Props {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: Partial<Device>) => Promise<void>;
+  onAdd: () => void;
 }
 
-interface FormInputs {
+interface FormData {
   name: string;
   host: string;
   username: string;
@@ -33,24 +33,45 @@ interface FormInputs {
   description?: string;
 }
 
-export default function AddDeviceModal({ isOpen, onClose, onSubmit }: Props) {
+export default function AddDeviceModal({ isOpen, onClose, onAdd }: Props) {
   const {
     register,
     handleSubmit,
     reset,
     formState: { errors, isSubmitting },
-  } = useForm<FormInputs>();
+  } = useForm<FormData>();
 
   const toast = useToast();
 
-  const onSubmitForm = async (data: FormInputs) => {
+  const onSubmit = async (data: FormData) => {
     try {
-      await onSubmit(data);
-      reset();
-    } catch (error) {
+      const response = await api.post('/api/devices', {
+        name: data.name,
+        host: data.host,
+        username: data.username,
+        password: data.password,
+        description: data.description || undefined
+      });
+
+      if (response.data.status === 'success') {
+        toast({
+          title: 'Success',
+          description: 'Device added successfully',
+          status: 'success',
+          duration: 5000,
+          isClosable: true,
+        });
+        reset();
+        onAdd();
+        onClose();
+      } else {
+        throw new Error(response.data.message || 'Failed to add device');
+      }
+    } catch (error: any) {
+      console.error('Error adding device:', error);
       toast({
         title: 'Error',
-        description: 'Failed to add device',
+        description: error.response?.data?.message || error.message || 'Failed to add device',
         status: 'error',
         duration: 5000,
         isClosable: true,
@@ -58,29 +79,24 @@ export default function AddDeviceModal({ isOpen, onClose, onSubmit }: Props) {
     }
   };
 
-  const handleClose = () => {
-    reset();
-    onClose();
-  };
-
   return (
-    <Modal isOpen={isOpen} onClose={handleClose} size="md">
+    <Modal isOpen={isOpen} onClose={onClose} size="md">
       <ModalOverlay />
       <ModalContent>
-        <form onSubmit={handleSubmit(onSubmitForm)}>
-          <ModalHeader>Add New Device</ModalHeader>
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <ModalHeader>Add Device</ModalHeader>
           <ModalCloseButton />
           
           <ModalBody>
             <VStack spacing={4}>
               <FormControl isInvalid={!!errors.name} isRequired>
-                <FormLabel>Device Name</FormLabel>
+                <FormLabel>Name</FormLabel>
                 <Input
                   {...register('name', {
                     required: 'Name is required',
                     minLength: { value: 2, message: 'Minimum length should be 2' }
                   })}
-                  placeholder="Enter device name"
+                  placeholder="Device name"
                 />
                 <FormErrorMessage>
                   {errors.name && errors.name.message}
@@ -93,11 +109,11 @@ export default function AddDeviceModal({ isOpen, onClose, onSubmit }: Props) {
                   {...register('host', {
                     required: 'Host is required',
                     pattern: {
-                      value: /^[a-zA-Z0-9.-]+\.[a-zA-Z]{2,}$/,
-                      message: 'Invalid hostname format'
+                      value: /^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])$|^(\d{1,3}\.){3}\d{1,3}$/,
+                      message: 'Invalid hostname or IP address format'
                     }
                   })}
-                  placeholder="e.g., ltm.example.com"
+                  placeholder="hostname or IP address"
                 />
                 <FormErrorMessage>
                   {errors.host && errors.host.message}
@@ -145,7 +161,7 @@ export default function AddDeviceModal({ isOpen, onClose, onSubmit }: Props) {
           </ModalBody>
 
           <ModalFooter>
-            <Button variant="ghost" mr={3} onClick={handleClose}>
+            <Button variant="ghost" mr={3} onClick={onClose}>
               Cancel
             </Button>
             <Button

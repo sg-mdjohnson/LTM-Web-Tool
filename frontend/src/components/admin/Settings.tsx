@@ -234,7 +234,7 @@ export default function Settings() {
 
   return (
     <VStack spacing={6} align="stretch">
-      {systemMetrics && <SystemStatus metrics={systemMetrics} />}
+      {systemMetrics && <SystemStatus />}
       
       <SystemHealth
         checks={healthChecks}

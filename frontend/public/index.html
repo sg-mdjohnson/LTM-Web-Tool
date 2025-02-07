@@ -12,6 +12,15 @@
     <link rel="apple-touch-icon" href="%PUBLIC_URL%/logo192.png" />
     <link rel="manifest" href="%PUBLIC_URL%/manifest.json" />
     <title>LTM Web Tool</title>
+    <script>
+      (function() {
+        const colorMode = localStorage.getItem('chakra-ui-color-mode');
+        if (!colorMode || colorMode === 'dark') {
+          document.documentElement.style.setProperty('background-color', '#1a202c');
+          document.body.style.setProperty('background-color', '#1a202c');
+        }
+      })();
+    </script>
   </head>
   <body>
     <noscript>You need to enable JavaScript to run this app.</noscript>

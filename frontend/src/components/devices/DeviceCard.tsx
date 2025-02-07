@@ -4,14 +4,21 @@ import {
   Heading,
   Text,
   Badge,
-  Button,
   HStack,
   useColorModeValue,
   IconButton,
   Tooltip,
   VStack,
 } from '@chakra-ui/react';
-import { DeleteIcon, RepeatIcon } from '@chakra-ui/icons';
+import {
+  DeleteIcon,
+  RepeatIcon,
+  TimeIcon,
+  WarningIcon,
+  CheckCircleIcon,
+  NotAllowedIcon,
+  ViewIcon
+} from '@chakra-ui/icons';
 import { Device } from '../../types/device';
 
 interface Props {
@@ -37,7 +44,7 @@ export default function DeviceCard({ device, onDelete, onTest }: Props) {
     }
   };
 
-  const getStatusColor = (status: string) => {
+  const getStatusColor = (status: string | undefined): string => {
     switch (status) {
       case 'active':
         return 'green';
@@ -47,6 +54,19 @@ export default function DeviceCard({ device, onDelete, onTest }: Props) {
         return 'red';
       default:
         return 'gray';
+    }
+  };
+
+  const getStatusIcon = (status: string | undefined) => {
+    switch (status) {
+      case 'active':
+        return <CheckCircleIcon color="green.500" />;
+      case 'inactive':
+        return <WarningIcon color="orange.500" />;
+      case 'error':
+        return <NotAllowedIcon color="red.500" />;
+      default:
+        return <WarningIcon color="gray.500" />;
     }
   };
 
@@ -61,10 +81,16 @@ export default function DeviceCard({ device, onDelete, onTest }: Props) {
     >
       <VStack align="stretch" spacing={3}>
         <HStack justify="space-between">
-          <Heading size="md">{device.name}</Heading>
-          <Badge colorScheme={getStatusColor(device.status)}>
-            {device.status}
-          </Badge>
+          <HStack>
+            <ViewIcon boxSize={5} />
+            <Heading size="md">{device.name}</Heading>
+          </HStack>
+          <HStack>
+            {getStatusIcon(device.status)}
+            <Badge colorScheme={getStatusColor(device.status)}>
+              {device.status || 'unknown'}
+            </Badge>
+          </HStack>
         </HStack>
 
         <Text color="gray.500">{device.host}</Text>
@@ -105,9 +131,10 @@ export default function DeviceCard({ device, onDelete, onTest }: Props) {
           </HStack>
 
           {device.last_used && (
-            <Text fontSize="xs" color="gray.500">
-              Last used: {new Date(device.last_used).toLocaleDateString()}
-            </Text>
+            <HStack spacing={1} fontSize="xs" color="gray.500">
+              <TimeIcon boxSize={3} />
+              <Text>Last used: {new Date(device.last_used).toLocaleDateString()}</Text>
+            </HStack>
           )}
         </HStack>
       </VStack>

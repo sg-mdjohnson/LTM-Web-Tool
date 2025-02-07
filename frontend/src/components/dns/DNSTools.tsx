@@ -31,37 +31,14 @@ import {
   Switch,
   IconButton,
 } from '@chakra-ui/react';
-import { SearchIcon, RepeatIcon, LockIcon, ViewIcon } from '@chakra-ui/icons';
+import {
+  SearchIcon,
+  RepeatIcon,
+  LockIcon,
+  ViewIcon,
+} from '@chakra-ui/icons';
 import api from '../../utils/api';
-
-interface DNSResult {
-  query: string;
-  type: string;
-  answers: DNSAnswer[];
-  server: string;
-  time: number;
-  dnssec?: {
-    validated: boolean;
-    secure: boolean;
-    chain?: DNSSECChain[];
-  };
-}
-
-interface DNSAnswer {
-  name: string;
-  type: string;
-  data: string;
-  ttl: number;
-}
-
-interface DNSSECChain {
-  name: string;
-  type: string;
-  algorithm: string;
-  validFrom: string;
-  validUntil: string;
-  status: 'valid' | 'invalid' | 'missing';
-}
+import { DNSResult, DNSRecord, DNSPropagationResult } from '../../types';
 
 interface QueryHistoryEntry {
   id: string;
@@ -295,6 +272,14 @@ export default function DNSTools() {
     }
   };
 
+  const hasRecords = (results: DNSResult): results is DNSResult & { records: DNSRecord[] } => {
+    return 'records' in results && Array.isArray(results.records);
+  };
+
+  const hasPropagationResults = (results: DNSResult): results is DNSResult & { results: DNSPropagationResult[] } => {
+    return 'results' in results && Array.isArray(results.results);
+  };
+
   return (
     <Card bg={bgColor} borderColor={borderColor}>
       <CardHeader>
@@ -414,7 +399,7 @@ export default function DNSTools() {
                 </FormControl>
 
                 <Button
-                  leftIcon={<SearchIcon />}
+                  leftIcon={<RepeatIcon />}
                   onClick={handleReverseLookup}
                   isLoading={isLoading}
                   colorScheme="brand"
@@ -471,15 +456,15 @@ export default function DNSTools() {
                 </FormControl>
 
                 <Button
-                  leftIcon={<RepeatIcon />}
+                  leftIcon={<ViewIcon />}
                   onClick={handleZoneTransfer}
                   isLoading={isLoading}
                   colorScheme="brand"
                 >
-                  Attempt Zone Transfer
+                  Zone Transfer
                 </Button>
 
-                {results && (
+                {results && hasRecords(results) && (
                   <Box>
                     <Text fontWeight="medium" mb={2}>
                       Zone Transfer Results
@@ -540,7 +525,7 @@ export default function DNSTools() {
                 </FormControl>
 
                 <Button
-                  leftIcon={<SearchIcon />}
+                  leftIcon={<RepeatIcon />}
                   onClick={handlePropagationCheck}
                   isLoading={isLoading}
                   colorScheme="brand"
@@ -548,7 +533,7 @@ export default function DNSTools() {
                   Check Propagation
                 </Button>
 
-                {results && (
+                {results && hasPropagationResults(results) && (
                   <Box>
                     <Text fontWeight="medium" mb={2}>
                       Propagation Results
@@ -581,7 +566,7 @@ export default function DNSTools() {
                                 : '-'}
                             </Td>
                             <Td>
-                              {result.status === 'success' ? (
+                              {result.status === 'success' && result.answers ? (
                                 <Code>{result.answers.join(', ')}</Code>
                               ) : (
                                 <Text color="red.500">{result.error}</Text>

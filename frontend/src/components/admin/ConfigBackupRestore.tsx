@@ -47,22 +47,11 @@ import {
   DeleteIcon,
   InfoIcon,
   WarningIcon,
-  CompareIcon,
 } from '@chakra-ui/icons';
+import { CompareIcon } from '../icons/CompareIcon';
 import api from '../../utils/api';
 import BackupDiffViewer from './BackupDiffViewer';
-
-interface BackupEntry {
-  id: string;
-  timestamp: string;
-  type: 'manual' | 'scheduled';
-  author: string;
-  size: string;
-  devices: string[];
-  comment?: string;
-  status: 'success' | 'partial' | 'failed';
-  version: string;
-}
+import { BackupEntry } from '../../types';
 
 interface RestoreOptions {
   backupId: string;

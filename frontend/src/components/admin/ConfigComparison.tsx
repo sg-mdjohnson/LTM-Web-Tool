@@ -28,7 +28,8 @@ import {
   Spacer,
 } from '@chakra-ui/react';
 import { DiffEditor } from '@monaco-editor/react';
-import { CompareIcon, DownloadIcon, ChevronUpIcon, ChevronDownIcon } from '@chakra-ui/icons';
+import { DownloadIcon, ChevronUpIcon, ChevronDownIcon } from '@chakra-ui/icons';
+import { CompareIcon } from '../icons/CompareIcon';
 import api from '../../utils/api';
 
 interface Device {

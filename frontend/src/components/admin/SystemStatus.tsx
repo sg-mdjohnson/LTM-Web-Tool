@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState, useEffect } from 'react';
 import {
   Card,
   CardHeader,
@@ -7,7 +7,6 @@ import {
   VStack,
   HStack,
   Text,
-  Badge,
   CircularProgress,
   CircularProgressLabel,
   Tooltip,
@@ -16,7 +15,9 @@ import {
   StatNumber,
   StatHelpText,
   useColorModeValue,
+  Box,
 } from '@chakra-ui/react';
+import api from '../../utils/api';
 
 interface SystemMetrics {
   cpu_usage: number;
@@ -29,11 +30,7 @@ interface SystemMetrics {
   database_size: string;
 }
 
-interface Props {
-  metrics: SystemMetrics;
-}
-
-export default function SystemStatus({ metrics }: Props) {
+export default function SystemStatus() {
   const bgColor = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
 
@@ -42,6 +39,34 @@ export default function SystemStatus({ metrics }: Props) {
     if (usage >= 70) return 'yellow';
     return 'green';
   };
+
+  const [metricsState, setMetricsState] = useState<SystemMetrics>({
+    cpu_usage: 0,
+    memory_usage: 0,
+    disk_usage: 0,
+    uptime: '0d 0h 0m',
+    active_users: 0,
+    active_sessions: 0,
+    last_backup: 'Never',
+    database_size: '0 MB'
+  });
+
+  useEffect(() => {
+    const loadMetrics = async () => {
+      try {
+        const response = await api.get('/api/admin/metrics');
+        if (response.data.status === 'success') {
+          setMetricsState(response.data.metrics);
+        }
+      } catch (error) {
+        console.error('Failed to load metrics:', error);
+      }
+    };
+
+    loadMetrics();
+    const interval = setInterval(loadMetrics, 30000); // Update every 30 seconds
+    return () => clearInterval(interval);
+  }, []);
 
   return (
     <Card bg={bgColor} borderColor={borderColor}>
@@ -54,12 +79,12 @@ export default function SystemStatus({ metrics }: Props) {
             <Tooltip label="CPU Usage">
               <Box>
                 <CircularProgress
-                  value={metrics.cpu_usage}
-                  color={getUsageColor(metrics.cpu_usage)}
+                  value={metricsState.cpu_usage}
+                  color={getUsageColor(metricsState.cpu_usage)}
                   size="100px"
                 >
                   <CircularProgressLabel>
-                    {metrics.cpu_usage}%
+                    {metricsState.cpu_usage}%
                   </CircularProgressLabel>
                 </CircularProgress>
                 <Text textAlign="center" mt={2}>CPU</Text>
@@ -69,12 +94,12 @@ export default function SystemStatus({ metrics }: Props) {
             <Tooltip label="Memory Usage">
               <Box>
                 <CircularProgress
-                  value={metrics.memory_usage}
-                  color={getUsageColor(metrics.memory_usage)}
+                  value={metricsState.memory_usage}
+                  color={getUsageColor(metricsState.memory_usage)}
                   size="100px"
                 >
                   <CircularProgressLabel>
-                    {metrics.memory_usage}%
+                    {metricsState.memory_usage}%
                   </CircularProgressLabel>
                 </CircularProgress>
                 <Text textAlign="center" mt={2}>Memory</Text>
@@ -84,12 +109,12 @@ export default function SystemStatus({ metrics }: Props) {
             <Tooltip label="Disk Usage">
               <Box>
                 <CircularProgress
-                  value={metrics.disk_usage}
-                  color={getUsageColor(metrics.disk_usage)}
+                  value={metricsState.disk_usage}
+                  color={getUsageColor(metricsState.disk_usage)}
                   size="100px"
                 >
                   <CircularProgressLabel>
-                    {metrics.disk_usage}%
+                    {metricsState.disk_usage}%
                   </CircularProgressLabel>
                 </CircularProgress>
                 <Text textAlign="center" mt={2}>Disk</Text>
@@ -100,19 +125,19 @@ export default function SystemStatus({ metrics }: Props) {
           <HStack spacing={8} justify="space-around">
             <Stat>
               <StatLabel>Uptime</StatLabel>
-              <StatNumber>{metrics.uptime}</StatNumber>
+              <StatNumber>{metricsState.uptime}</StatNumber>
             </Stat>
 
             <Stat>
               <StatLabel>Active Users</StatLabel>
-              <StatNumber>{metrics.active_users}</StatNumber>
-              <StatHelpText>{metrics.active_sessions} sessions</StatHelpText>
+              <StatNumber>{metricsState.active_users}</StatNumber>
+              <StatHelpText>{metricsState.active_sessions} sessions</StatHelpText>
             </Stat>
 
             <Stat>
               <StatLabel>Database Size</StatLabel>
-              <StatNumber>{metrics.database_size}</StatNumber>
-              <StatHelpText>Last backup: {metrics.last_backup}</StatHelpText>
+              <StatNumber>{metricsState.database_size}</StatNumber>
+              <StatHelpText>Last backup: {metricsState.last_backup}</StatHelpText>
             </Stat>
           </HStack>
         </VStack>

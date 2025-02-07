@@ -47,28 +47,12 @@ export default function Devices() {
     }
   };
 
-  const handleAddDevice = async (deviceData: Partial<Device>) => {
+  const handleAddDevice = async () => {
     try {
-      const response = await api.post('/api/device/add', deviceData);
-      if (response.data.status === 'success') {
-        toast({
-          title: 'Success',
-          description: 'Device added successfully',
-          status: 'success',
-          duration: 5000,
-          isClosable: true,
-        });
-        loadDevices();
-        onClose();
-      }
+      await loadDevices();
+      onClose();
     } catch (error) {
-      toast({
-        title: 'Error',
-        description: error instanceof Error ? error.message : 'Failed to add device',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
+      console.error('Error reloading devices:', error);
     }
   };
 
@@ -148,7 +132,7 @@ export default function Devices() {
       <AddDeviceModal
         isOpen={isOpen}
         onClose={onClose}
-        onSubmit={handleAddDevice}
+        onAdd={handleAddDevice}
       />
     </Box>
   );

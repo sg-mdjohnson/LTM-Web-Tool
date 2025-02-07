@@ -28,6 +28,7 @@ import {
 import { DiffEditor } from '@monaco-editor/react';
 import { DownloadIcon } from '@chakra-ui/icons';
 import api from '../../utils/api';
+import { BackupEntry } from '../../types';
 
 interface BackupDiffProps {
   isOpen: boolean;
@@ -175,7 +176,7 @@ export default function BackupDiffViewer({ isOpen, onClose, sourceBackup, backup
                   onChange={(e) => setSelectedDevice(e.target.value)}
                 >
                   <option value="all">All Devices</option>
-                  {sourceBackup.devices.map((device) => (
+                  {sourceBackup.devices.map((device: string) => (
                     <option key={device} value={device}>
                       {device}
                     </option>

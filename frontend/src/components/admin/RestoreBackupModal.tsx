@@ -26,6 +26,11 @@ interface Props {
   onSuccess: () => void;
 }
 
+interface ProgressEvent {
+  loaded: number;
+  total?: number;
+}
+
 export default function RestoreBackupModal({ isOpen, onClose, onSuccess }: Props) {
   const [isUploading, setIsUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState(0);
@@ -56,8 +61,9 @@ export default function RestoreBackupModal({ isOpen, onClose, onSuccess }: Props
         headers: {
           'Content-Type': 'multipart/form-data',
         },
-        onUploadProgress: (progressEvent) => {
-          const progress = (progressEvent.loaded / progressEvent.total) * 100;
+        onUploadProgress: (progressEvent: ProgressEvent) => {
+          const total = progressEvent.total || 100;
+          const progress = (progressEvent.loaded / total) * 100;
           setUploadProgress(Math.round(progress));
         },
       });
