@@ -237,39 +237,41 @@ For support:
 - Check the troubleshooting guide
 - Contact the maintainers
 
-# Quick Local Testing Guide (Windows + WSL)
+# Quick Local Testing Guide (Windows with Git Bash)
 
-## Windows Setup
+## Windows Prerequisites
+1. Install required software:
+   - Python 3.13 from [python.org](https://www.python.org/downloads/)
+   - Git Bash from [git-scm.com](https://git-scm.com/download/win)
+   - Node.js LTS from [nodejs.org](https://nodejs.org/)
 
-1. Open PowerShell as Administrator and install WSL if not already installed:
-```powershell
-wsl --install
-```
-
-2. Install Python 3.13 dependencies:
-```powershell
-python -m pip install --upgrade pip
-python -m pip install virtualenv
-```
-
-## Testing Steps
-
-1. Clone the repository in WSL:
+2. Open Git Bash and verify installations:
 ```bash
-cd ~
-git clone https://github.com/yourusername/ltm-web-tool.git
-cd ltm-web-tool
+python --version  # Should show Python 3.13.x
+node --version   # Should show v16.x or higher
+npm --version    # Should show 8.x or higher
+```
+
+## Setup Steps
+
+1. Navigate to your project directory:
+```bash
+cd ~/Desktop/WORK/AI-WERK/CursorAI/LTM-Web-Tool
 ```
 
 2. Create and activate Python virtual environment:
 ```bash
-# In WSL terminal
-python -m virtualenv venv
-source venv/bin/activate
+# In Git Bash
+python -m venv venv
+source venv/Scripts/activate  # Note: Scripts not bin for Windows
+```
 
-# Or in Windows PowerShell
-python -m virtualenv venv
-.\venv\Scripts\activate
+If the above activation doesn't work, try:
+```bash
+# Alternative activation methods
+. venv/Scripts/activate
+# OR
+venv/Scripts/activate
 ```
 
 3. Install backend requirements:
@@ -280,45 +282,83 @@ pip install -r requirements.txt
 
 4. Start the backend server:
 ```bash
-# Development mode
-uvicorn main:app --reload --host 0.0.0.0 --port 8000
-
-# Or simple mode
-python main.py
+# Make sure you're in the backend directory
+python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
 ```
 
-5. Open a new terminal and start the frontend:
+5. Open a new Git Bash window and start the frontend:
 ```bash
-cd frontend
+cd ~/Desktop/WORK/AI-WERK/CursorAI/LTM-Web-Tool/frontend
 npm install
 npm start
 ```
 
-The application will automatically open in your default browser at `http://localhost:3000`
+## Common Issues and Solutions
 
-## Quick Test DNS Tools
+1. **Virtual Environment Activation Fails**
+   ```bash
+   # If you get "No such file or directory", check the path:
+   ls venv/Scripts/  # Should show activate file
+   # If Scripts directory doesn't exist, recreate the venv:
+   rm -rf venv
+   python -m venv venv
+   source venv/Scripts/activate
+   ```
 
-1. Test basic DNS lookup:
-```bash
-# In WSL or PowerShell
-curl http://localhost:8000/api/dns/lookup -X POST -H "Content-Type: application/json" -d '{"query": "google.com", "type": "A"}'
-```
+2. **Python Command Not Found**
+   ```bash
+   # Add Python to PATH or use full path
+   export PATH="$PATH:/c/Users/$USERNAME/AppData/Local/Programs/Python/Python313"
+   # OR use python3 instead of python
+   python3 -m venv venv
+   ```
 
-2. Test reverse lookup:
-```bash
-curl http://localhost:8000/api/dns/reverse -X POST -H "Content-Type: application/json" -d '{"ip": "8.8.8.8"}'
-```
+3. **Permission Issues**
+   ```bash
+   # Run Git Bash as Administrator or check folder permissions
+   chmod -R 755 venv/Scripts
+   ```
 
-## Troubleshooting Local Setup
+4. **Module Not Found Errors**
+   ```bash
+   # Make sure you're in the virtual environment (should see (venv) prefix)
+   # Then reinstall requirements
+   pip install --upgrade pip
+   pip install -r requirements.txt
+   ```
 
-- **Port already in use**: Change the port in the uvicorn command (e.g., --port 8001)
-- **Module not found**: Make sure you're in the virtual environment
-- **WSL networking issues**: Check WSL network adapter status
-- **CORS errors**: Backend is configured to allow localhost frontend access
+The key differences for Windows Git Bash are:
+- Use `Scripts` instead of `bin` directory
+- Use Windows-style paths with forward slashes
+- May need different activation commands depending on Git Bash setup
 
 ## Development Notes
 
-- Backend API is available at: `http://localhost:8000`
-- API documentation: `http://localhost:8000/docs`
-- Frontend dev server: `http://localhost:3000`
-- Hot reload is enabled for both frontend and backend
+- Backend runs on: `http://localhost:8000`
+- Frontend runs on: `http://localhost:3000`
+- API docs available at: `http://localhost:8000/docs`
+- Use `Ctrl+C` to stop either server
+
+## Directory Structure
+```
+ltm-web-tool/
+├── backend/
+│   ├── main.py
+│   └── requirements.txt
+└── frontend/
+    ├── package.json
+    └── src/
+```
+
+## Environment Variables
+Create `.env` file in backend directory:
+```bash
+cp backend/.env.example backend/.env
+```
+
+Default content for `.env`:
+```
+DEBUG=True
+HOST=127.0.0.1
+PORT=8000
+```
