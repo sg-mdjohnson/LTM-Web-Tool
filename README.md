@@ -239,39 +239,51 @@ For support:
 
 # Quick Local Testing Guide (Windows with Git Bash)
 
-## Windows Prerequisites
-1. Install required software:
-   - Python 3.13 from [python.org](https://www.python.org/downloads/)
-   - Git Bash from [git-scm.com](https://git-scm.com/download/win)
-   - Node.js LTS from [nodejs.org](https://nodejs.org/)
+## Windows Prerequisites Setup
 
-2. Open Git Bash and verify installations:
+1. **Python 3.13** - Already installed ✅
+   - Verified with `python --version` showing Python 3.13.2
+
+2. **Install Node.js and npm**:
+   - Download Node.js LTS from [nodejs.org](https://nodejs.org/)
+   - Run the installer
+   - **Important**: During installation:
+     - Check "Automatically install necessary tools"
+     - Check "Add to PATH"
+   - After installation, close and reopen Git Bash
+   - Verify installation:
+   ```bash
+   node --version   # Should show v16.x or higher
+   npm --version    # Should show 8.x or higher
+   ```
+
+   If commands still not found after installation:
+   ```bash
+   # Add Node.js to PATH manually in Git Bash
+   export PATH="$PATH:/c/Program Files/nodejs"
+   # OR for user-specific installation
+   export PATH="$PATH:$APPDATA/npm"
+   ```
+
+3. **Verify All Requirements**:
 ```bash
-python --version  # Should show Python 3.13.x
-node --version   # Should show v16.x or higher
-npm --version    # Should show 8.x or higher
+# Check all installations
+python --version
+node --version
+npm --version
 ```
 
-## Setup Steps
+## Setup Steps (After Node.js Installation)
 
-1. Navigate to your project directory:
+1. Stay in your project directory:
 ```bash
 cd ~/Desktop/WORK/AI-WERK/CursorAI/LTM-Web-Tool
 ```
 
-2. Create and activate Python virtual environment:
+2. Create Python virtual environment:
 ```bash
-# In Git Bash
 python -m venv venv
-source venv/Scripts/activate  # Note: Scripts not bin for Windows
-```
-
-If the above activation doesn't work, try:
-```bash
-# Alternative activation methods
-. venv/Scripts/activate
-# OR
-venv/Scripts/activate
+source venv/Scripts/activate
 ```
 
 3. Install backend requirements:
@@ -282,7 +294,6 @@ pip install -r requirements.txt
 
 4. Start the backend server:
 ```bash
-# Make sure you're in the backend directory
 python -m uvicorn main:app --reload --host 127.0.0.1 --port 8000
 ```
 
@@ -293,44 +304,39 @@ npm install
 npm start
 ```
 
-## Common Issues and Solutions
+## Troubleshooting Node.js/npm Issues
 
-1. **Virtual Environment Activation Fails**
+1. **If Node.js commands not found after installation**:
+   - Open Windows PowerShell as Administrator and run:
+   ```powershell
+   # Refresh environment variables
+   refreshenv
+   # OR
+   $env:Path = [System.Environment]::GetEnvironmentVariable("Path","Machine") + ";" + [System.Environment]::GetEnvironmentVariable("Path","User")
+   ```
+   - Then close and reopen Git Bash
+
+2. **Alternative Node.js Setup**:
    ```bash
-   # If you get "No such file or directory", check the path:
-   ls venv/Scripts/  # Should show activate file
-   # If Scripts directory doesn't exist, recreate the venv:
-   rm -rf venv
-   python -m venv venv
-   source venv/Scripts/activate
+   # Check if Node.js is installed but not in PATH
+   ls "/c/Program Files/nodejs"
+   # If found, add to PATH
+   export PATH="$PATH:/c/Program Files/nodejs"
    ```
 
-2. **Python Command Not Found**
+3. **Verify Node.js Installation**:
    ```bash
-   # Add Python to PATH or use full path
-   export PATH="$PATH:/c/Users/$USERNAME/AppData/Local/Programs/Python/Python313"
-   # OR use python3 instead of python
-   python3 -m venv venv
+   # Should show installation directory
+   where node
+   where npm
    ```
 
-3. **Permission Issues**
+4. **If npm install fails**:
    ```bash
-   # Run Git Bash as Administrator or check folder permissions
-   chmod -R 755 venv/Scripts
+   # Clear npm cache and try again
+   npm cache clean --force
+   npm install
    ```
-
-4. **Module Not Found Errors**
-   ```bash
-   # Make sure you're in the virtual environment (should see (venv) prefix)
-   # Then reinstall requirements
-   pip install --upgrade pip
-   pip install -r requirements.txt
-   ```
-
-The key differences for Windows Git Bash are:
-- Use `Scripts` instead of `bin` directory
-- Use Windows-style paths with forward slashes
-- May need different activation commands depending on Git Bash setup
 
 ## Development Notes
 
