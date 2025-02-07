@@ -54,7 +54,7 @@ async def dns_lookup(request: DNSLookupRequest):
             "answers": [
                 {
                     "name": str(answer.name),
-                    "type": dns.rdatatype.to_text(answer.rdtype),
+                    "type": request.type,
                     "data": str(answer),
                     "ttl": answer.ttl,
                 }

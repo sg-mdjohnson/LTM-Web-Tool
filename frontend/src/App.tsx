@@ -1,28 +1,14 @@
 import React from 'react';
-import { ChakraProvider, Box } from '@chakra-ui/react';
-import { BrowserRouter as Router } from 'react-router-dom';
-import theme from './theme/theme';
-import AppRoutes from './routes';
-import Navbar from './components/common/Navbar';
-import { AuthProvider } from './contexts/AuthContext';
-import ErrorBoundary from './components/common/ErrorBoundary';
+import { Box, Container } from '@chakra-ui/react';
+import DNSTools from './components/dns/DNSTools';
 
 function App() {
   return (
-    <ChakraProvider theme={theme}>
-      <ErrorBoundary>
-        <AuthProvider>
-          <Router>
-            <Box minH="100vh">
-              <Navbar />
-              <Box as="main" p={4}>
-                <AppRoutes />
-              </Box>
-            </Box>
-          </Router>
-        </AuthProvider>
-      </ErrorBoundary>
-    </ChakraProvider>
+    <Container maxW="container.xl" py={4}>
+      <Box>
+        <DNSTools />
+      </Box>
+    </Container>
   );
 }
 
