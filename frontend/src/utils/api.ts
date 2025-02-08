@@ -1,4 +1,5 @@
 import axios from 'axios';
+import { useNavigate } from 'react-router-dom';
 
 const api = axios.create({
   baseURL: process.env.REACT_APP_API_URL || 'http://localhost:8000',
@@ -43,4 +44,31 @@ api.interceptors.response.use(
   }
 );
 
-export default api; 
+export default api;
+
+// Custom hook for API errors
+export function useApiError() {
+  const navigate = useNavigate();
+
+  return {
+    handleError: (error: any) => {
+      if (error.response) {
+        switch (error.response.status) {
+          case 401:
+            navigate('/login');
+            break;
+          case 403:
+            // Handle forbidden
+            break;
+          case 404:
+            // Handle not found
+            break;
+          default:
+            // Handle other errors
+            break;
+        }
+      }
+      return error.response?.data?.message || 'An error occurred';
+    },
+  };
+} 

@@ -1,19 +1,26 @@
-from app import db
+from sqlalchemy import Column, Integer, String, Text, ForeignKey
+from sqlalchemy.orm import relationship
+from app.db.base import Base
 import json
 
-class UserConfig(db.Model):
-    id = db.Column(db.Integer, primary_key=True)
-    user_id = db.Column(db.Integer, db.ForeignKey('user.id'), unique=True)
+class UserConfig(Base):
+    __tablename__ = "user_configs"
+
+    id = Column(Integer, primary_key=True, index=True)
+    user_id = Column(Integer, ForeignKey("users.id"), unique=True)
     
     # Theme preferences
-    theme = db.Column(db.String(50), default='dark')
-    theme_customization = db.Column(db.Text)  # JSON string of custom theme
+    theme = Column(String(50), default='dark')
+    theme_customization = Column(Text)  # JSON string
     
     # CLI preferences
-    cli_preferences = db.Column(db.Text)  # JSON string
+    cli_preferences = Column(Text)  # JSON string
     
     # Timeout settings
-    timeout_settings = db.Column(db.Text)  # JSON string
+    timeout_settings = Column(Text)  # JSON string
+    
+    # Relationship
+    user = relationship("User", back_populates="config")
     
     def get_theme_customization(self):
         if self.theme_customization:

@@ -1,31 +1,41 @@
 import React from 'react';
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
-import { Box, Container } from '@chakra-ui/react';
-import Navbar from './components/layout/Navbar';
-import DNSTools from './components/dns/DNSTools';
+import { ChakraProvider } from '@chakra-ui/react';
+import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom';
+import { AuthProvider } from './contexts/AuthContext';
+import theme from './theme';
+
+import LoginPage from './components/auth/LoginPage';
+import MainLayout from './components/layout/MainLayout';
+import ProtectedRoute from './components/common/ProtectedRoute';
 import DeviceList from './components/devices/DeviceList';
-import ConfigBackupRestore from './components/admin/ConfigBackupRestore';
-import ConfigComparison from './components/admin/ConfigComparison';
-import SystemStatus from './components/admin/SystemStatus';
+import DNSTools from './components/dns/DNSTools';
+import AdminPanel from './components/admin/AdminPanel';
 
-function App() {
+export default function App() {
   return (
-    <Router>
-      <Box minH="100vh">
-        <Navbar />
-        <Container maxW="container.xl" py={4}>
+    <ChakraProvider theme={theme}>
+      <AuthProvider>
+        <BrowserRouter>
           <Routes>
-            <Route path="/" element={<DNSTools />} />
-            <Route path="/dns" element={<DNSTools />} />
-            <Route path="/devices" element={<DeviceList />} />
-            <Route path="/config" element={<ConfigComparison />} />
-            <Route path="/backup" element={<ConfigBackupRestore />} />
-            <Route path="/admin" element={<SystemStatus />} />
+            <Route path="/login" element={<LoginPage />} />
+            <Route
+              path="/"
+              element={
+                <ProtectedRoute>
+                  <MainLayout>
+                    <Routes>
+                      <Route path="/" element={<Navigate to="/devices" replace />} />
+                      <Route path="/devices" element={<DeviceList />} />
+                      <Route path="/dns" element={<DNSTools />} />
+                      <Route path="/admin" element={<AdminPanel />} />
+                    </Routes>
+                  </MainLayout>
+                </ProtectedRoute>
+              }
+            />
           </Routes>
-        </Container>
-      </Box>
-    </Router>
+        </BrowserRouter>
+      </AuthProvider>
+    </ChakraProvider>
   );
-}
-
-export default App; 
+} 

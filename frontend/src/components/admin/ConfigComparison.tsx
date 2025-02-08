@@ -26,11 +26,16 @@ import {
   AlertDescription,
   Collapse,
   Spacer,
+  Grid,
+  useToast,
+  Textarea,
 } from '@chakra-ui/react';
 import { DiffEditor } from '@monaco-editor/react';
 import { DownloadIcon, ChevronUpIcon, ChevronDownIcon } from '@chakra-ui/icons';
 import { CompareIcon } from '../icons/CompareIcon';
 import api from '../../utils/api';
+import { useApiError } from '../../utils/api';
+import LoadingSpinner from '../common/LoadingSpinner';
 
 interface Device {
   id: number;
@@ -100,6 +105,10 @@ export default function ConfigComparison() {
   const [showAnalysis, setShowAnalysis] = useState(false);
   const [filterSecurityChanges, setFilterSecurityChanges] = useState(false);
   const [filterServiceImpacts, setFilterServiceImpacts] = useState(false);
+  const [originalConfig, setOriginalConfig] = useState<string>('');
+  const [modifiedConfig, setModifiedConfig] = useState<string>('');
+  const toast = useToast();
+  const { handleError } = useApiError();
 
   const bgColor = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
@@ -132,24 +141,27 @@ export default function ConfigComparison() {
   };
 
   const handleCompare = async () => {
-    if (!sourceDevice || !targetDevice) return;
+    if (!sourceDevice || !targetDevice) {
+      toast({
+        title: 'Error',
+        description: 'Please select both devices',
+        status: 'error',
+        duration: 3000,
+      });
+      return;
+    }
 
     setIsLoading(true);
-    setError(null);
-
     try {
-      const response = await api.post('/api/admin/configs/compare', {
-        sourceDevice,
-        targetDevice,
-        sourceVersion,
-        targetVersion,
-      });
+      const [sourceResponse, targetResponse] = await Promise.all([
+        api.get(`/api/devices/${sourceDevice}/config`),
+        api.get(`/api/devices/${targetDevice}/config`),
+      ]);
 
-      if (response.data.status === 'success') {
-        setComparison(response.data.comparison);
-      }
+      setOriginalConfig(sourceResponse.data.config);
+      setModifiedConfig(targetResponse.data.config);
     } catch (error) {
-      setError('Failed to compare configurations');
+      handleError(error);
     } finally {
       setIsLoading(false);
     }
@@ -288,6 +300,8 @@ export default function ConfigComparison() {
     );
   };
 
+  if (isLoading) return <LoadingSpinner message="Loading configurations..." />;
+
   return (
     <Card bg={bgColor} borderColor={borderColor}>
       <CardHeader>
@@ -307,8 +321,8 @@ export default function ConfigComparison() {
       </CardHeader>
       <CardBody>
         <VStack spacing={4} align="stretch">
-          <HStack spacing={4}>
-            <Box flex={1}>
+          <Grid templateColumns="repeat(2, 1fr)" gap={6} mb={6}>
+            <Box>
               <Text mb={2}>Source Device</Text>
               <Select
                 value={sourceDevice}
@@ -325,25 +339,7 @@ export default function ConfigComparison() {
                 ))}
               </Select>
             </Box>
-            <Box flex={1}>
-              <Text mb={2}>Source Version</Text>
-              <Select
-                value={sourceVersion}
-                onChange={(e) => setSourceVersion(e.target.value)}
-                isDisabled={!sourceDevice}
-              >
-                <option value="current">Current Configuration</option>
-                {versions[sourceDevice]?.map(version => (
-                  <option key={version.id} value={version.id}>
-                    {new Date(version.timestamp).toLocaleString()} - {version.author}
-                  </option>
-                ))}
-              </Select>
-            </Box>
-          </HStack>
-
-          <HStack spacing={4}>
-            <Box flex={1}>
+            <Box>
               <Text mb={2}>Target Device</Text>
               <Select
                 value={targetDevice}
@@ -360,22 +356,7 @@ export default function ConfigComparison() {
                 ))}
               </Select>
             </Box>
-            <Box flex={1}>
-              <Text mb={2}>Target Version</Text>
-              <Select
-                value={targetVersion}
-                onChange={(e) => setTargetVersion(e.target.value)}
-                isDisabled={!targetDevice}
-              >
-                <option value="current">Current Configuration</option>
-                {versions[targetDevice]?.map(version => (
-                  <option key={version.id} value={version.id}>
-                    {new Date(version.timestamp).toLocaleString()} - {version.author}
-                  </option>
-                ))}
-              </Select>
-            </Box>
-          </HStack>
+          </Grid>
 
           <Button
             leftIcon={<CompareIcon />}
@@ -394,100 +375,22 @@ export default function ConfigComparison() {
             </Alert>
           )}
 
-          {comparison && (
+          {originalConfig && modifiedConfig && (
             <>
               <Divider />
               
-              <HStack spacing={4} wrap="wrap">
-                <Badge colorScheme="blue">
-                  Total Differences: {comparison.summary.total}
-                </Badge>
-                <Badge colorScheme="green">
-                  Added: {comparison.summary.added}
-                </Badge>
-                <Badge colorScheme="yellow">
-                  Modified: {comparison.summary.modified}
-                </Badge>
-                <Badge colorScheme="red">
-                  Removed: {comparison.summary.removed}
-                </Badge>
-                {comparison.summary.securityImpact && (
-                  <Badge colorScheme="red">Security Impact</Badge>
-                )}
-                {comparison.summary.serviceImpact && (
-                  <Badge colorScheme="orange">Service Impact</Badge>
-                )}
-              </HStack>
-
-              <Button
-                size="sm"
-                variant="ghost"
-                rightIcon={showAnalysis ? <ChevronUpIcon /> : <ChevronDownIcon />}
-                onClick={() => setShowAnalysis(!showAnalysis)}
-              >
-                Configuration Analysis
-              </Button>
-
-              <Collapse in={showAnalysis}>
-                {renderAnalysis()}
-              </Collapse>
-
-              <Tabs onChange={(index) => {
-                const sections = [
-                  'virtualServers',
-                  'pools',
-                  'monitors',
-                  'profiles',
-                  'irules',
-                  'policies',
-                  'certificates',
-                  'dataGroups',
-                  'nodes'
-                ];
-                setSelectedSection(sections[index]);
-              }}>
-                <TabList flexWrap="wrap">
-                  <Tab>Virtual Servers ({getSectionCount('virtualServers')})</Tab>
-                  <Tab>Pools ({getSectionCount('pools')})</Tab>
-                  <Tab>Monitors ({getSectionCount('monitors')})</Tab>
-                  <Tab>Profiles ({getSectionCount('profiles')})</Tab>
-                  <Tab>iRules ({getSectionCount('irules')})</Tab>
-                  <Tab>Policies ({getSectionCount('policies')})</Tab>
-                  <Tab>Certificates ({getSectionCount('certificates')})</Tab>
-                  <Tab>Data Groups ({getSectionCount('dataGroups')})</Tab>
-                  <Tab>Nodes ({getSectionCount('nodes')})</Tab>
-                </TabList>
-
-                <TabPanels>
-                  {['virtualServers', 'pools', 'monitors', 'profiles', 'irules', 'policies', 'certificates', 'dataGroups', 'nodes'].map((section) => (
-                    <TabPanel key={section}>
-                      <VStack spacing={4} align="stretch">
-                        {comparison.differences[section as keyof typeof comparison.differences].map((diff, index) => (
-                          <Box key={index} borderWidth={1} borderRadius="md" p={4}>
-                            <HStack justify="space-between" mb={2}>
-                              <Text fontWeight="medium">{diff.name}</Text>
-                              {getDiffBadge(diff.type)}
-                            </HStack>
-                            <Box height="300px" borderWidth={1} borderRadius="md">
-                              <DiffEditor
-                                height="100%"
-                                language="shell"
-                                original={diff.oldConfig || ''}
-                                modified={diff.newConfig}
-                                options={{
-                                  readOnly: true,
-                                  renderSideBySide: true,
-                                  minimap: { enabled: false },
-                                }}
-                              />
-                            </Box>
-                          </Box>
-                        ))}
-                      </VStack>
-                    </TabPanel>
-                  ))}
-                </TabPanels>
-              </Tabs>
+              <Box mt={4} height="600px">
+                <DiffEditor
+                  height="100%"
+                  language="shell"
+                  original={originalConfig}
+                  modified={modifiedConfig}
+                  options={{
+                    readOnly: true,
+                    renderSideBySide: true,
+                  }}
+                />
+              </Box>
             </>
           )}
         </VStack>

@@ -1,5 +1,12 @@
 import React, { Component, ErrorInfo, ReactNode } from 'react';
-import ErrorAlert from './ErrorAlert';
+import {
+  Box,
+  Button,
+  Heading,
+  Text,
+  VStack,
+  useColorModeValue,
+} from '@chakra-ui/react';
 
 interface Props {
   children: ReactNode;
@@ -30,10 +37,30 @@ export default class ErrorBoundary extends Component<Props, State> {
   public render() {
     if (this.state.hasError) {
       return (
-        <ErrorAlert
-          message={this.state.error?.message || 'An unexpected error occurred'}
-          showHomeButton
-        />
+        <Box
+          p={8}
+          maxW="xl"
+          mx="auto"
+          textAlign="center"
+          bg={useColorModeValue('white', 'gray.800')}
+          rounded="lg"
+          shadow="base"
+        >
+          <VStack spacing={4}>
+            <Heading size="lg">Something went wrong</Heading>
+            <Text color="gray.500">
+              {this.state.error?.message || 'An unexpected error occurred'}
+            </Text>
+            <Button
+              onClick={() => {
+                this.setState({ hasError: false, error: null });
+                window.location.reload();
+              }}
+            >
+              Try again
+            </Button>
+          </VStack>
+        </Box>
       );
     }
 

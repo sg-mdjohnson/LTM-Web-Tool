@@ -13,6 +13,7 @@ import {
   IconButton,
   useDisclosure,
   HStack,
+  Switch,
 } from '@chakra-ui/react';
 import { AddIcon, EditIcon, DeleteIcon } from '@chakra-ui/icons';
 import api from '../../utils/api';
@@ -20,6 +21,7 @@ import LoadingSpinner from '../common/LoadingSpinner';
 import ErrorAlert from '../common/ErrorAlert';
 import AddUserModal from './AddUserModal';
 import EditUserModal from './EditUserModal';
+import { useApiError } from '../../utils/api';
 
 interface User {
   id: number;
@@ -34,10 +36,10 @@ export default function UserManagement() {
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
   const { isOpen: isAddOpen, onOpen: onAddOpen, onClose: onAddClose } = useDisclosure();
   const { isOpen: isEditOpen, onOpen: onEditOpen, onClose: onEditClose } = useDisclosure();
   const toast = useToast();
+  const { handleError } = useApiError();
 
   useEffect(() => {
     loadUsers();
@@ -50,7 +52,12 @@ export default function UserManagement() {
         setUsers(response.data.users);
       }
     } catch (error) {
-      setError('Failed to load users');
+      toast({
+        title: 'Error',
+        description: handleError(error),
+        status: 'error',
+        duration: 5000,
+      });
     } finally {
       setIsLoading(false);
     }
@@ -132,8 +139,29 @@ export default function UserManagement() {
     }
   };
 
+  const toggleUserStatus = async (userId: number, isActive: boolean) => {
+    try {
+      await api.put(`/api/admin/users/${userId}`, {
+        is_active: isActive,
+      });
+      loadUsers();
+      toast({
+        title: 'Success',
+        description: 'User status updated',
+        status: 'success',
+        duration: 3000,
+      });
+    } catch (error) {
+      toast({
+        title: 'Error',
+        description: handleError(error),
+        status: 'error',
+        duration: 5000,
+      });
+    }
+  };
+
   if (isLoading) return <LoadingSpinner message="Loading users..." />;
-  if (error) return <ErrorAlert message={error} />;
 
   return (
     <Box>
@@ -163,14 +191,15 @@ export default function UserManagement() {
               <Td>{user.username}</Td>
               <Td>{user.email}</Td>
               <Td>
-                <Badge colorScheme={user.role === 'admin' ? 'red' : 'blue'}>
+                <Badge colorScheme={user.role === 'admin' ? 'red' : 'green'}>
                   {user.role}
                 </Badge>
               </Td>
               <Td>
-                <Badge colorScheme={user.is_active ? 'green' : 'gray'}>
-                  {user.is_active ? 'Active' : 'Inactive'}
-                </Badge>
+                <Switch
+                  isChecked={user.is_active}
+                  onChange={() => toggleUserStatus(user.id, !user.is_active)}
+                />
               </Td>
               <Td>{user.last_login ? new Date(user.last_login).toLocaleString() : 'Never'}</Td>
               <Td>

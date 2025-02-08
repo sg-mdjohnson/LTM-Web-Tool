@@ -1,222 +1,183 @@
 import React, { useState, useEffect } from 'react';
 import {
   Box,
-  VStack,
   Select,
-  HStack,
-  Text,
-  Code,
-  Button,
-  useToast,
+  Table,
+  Thead,
+  Tbody,
+  Tr,
+  Th,
+  Td,
   Badge,
-  Flex,
-  Spacer,
+  HStack,
+  Input,
+  Button,
+  useColorModeValue,
+  Text,
+  VStack,
 } from '@chakra-ui/react';
 import { DownloadIcon, RepeatIcon } from '@chakra-ui/icons';
 import api from '../../utils/api';
+import { useApiError } from '../../utils/api';
 import LoadingSpinner from '../common/LoadingSpinner';
-import ErrorAlert from '../common/ErrorAlert';
 
 interface LogEntry {
   timestamp: string;
   level: 'INFO' | 'WARNING' | 'ERROR' | 'DEBUG';
-  message: string;
   source: string;
+  message: string;
+  details?: string;
 }
-
-const LOG_TYPES = [
-  { value: 'all', label: 'All Logs' },
-  { value: 'app', label: 'Application Logs' },
-  { value: 'audit', label: 'Audit Logs' },
-  { value: 'cli', label: 'CLI Logs' },
-  { value: 'auth', label: 'Authentication Logs' },
-];
-
-const TIME_PERIODS = [
-  { value: '1', label: 'Last 24 Hours' },
-  { value: '7', label: 'Last 7 Days' },
-  { value: '30', label: 'Last 30 Days' },
-  { value: 'all', label: 'All Time' },
-];
 
 export default function SystemLogs() {
   const [logs, setLogs] = useState<LogEntry[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
-  const [logType, setLogType] = useState('all');
-  const [timePeriod, setTimePeriod] = useState('7');
-  const toast = useToast();
+  const [logType, setLogType] = useState('app');
+  const [filter, setFilter] = useState('');
+  const [days, setDays] = useState(7);
+  const { handleError } = useApiError();
+
+  const bgColor = useColorModeValue('white', 'gray.800');
 
   useEffect(() => {
-    loadLogs();
-  }, [logType, timePeriod]);
+    fetchLogs();
+  }, [logType, days]);
 
-  const loadLogs = async () => {
+  const fetchLogs = async () => {
     setIsLoading(true);
     try {
       const response = await api.get('/api/admin/logs', {
-        params: {
-          type: logType,
-          days: timePeriod === 'all' ? undefined : timePeriod,
-        },
+        params: { type: logType, days }
       });
-      if (response.data.status === 'success') {
-        setLogs(response.data.logs);
-      }
+      setLogs(response.data.logs);
     } catch (error) {
-      setError('Failed to load system logs');
-      toast({
-        title: 'Error',
-        description: 'Failed to load logs',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
+      handleError(error);
     } finally {
       setIsLoading(false);
     }
   };
 
-  const handleDownload = async () => {
+  const handleExport = async () => {
     try {
-      const response = await api.get('/api/admin/logs/download', {
-        params: {
-          type: logType,
-          days: timePeriod === 'all' ? undefined : timePeriod,
-        },
-        responseType: 'blob',
+      const response = await api.get('/api/admin/logs/export', {
+        params: { type: logType, days },
+        responseType: 'blob'
       });
-
       const url = window.URL.createObjectURL(new Blob([response.data]));
       const link = document.createElement('a');
       link.href = url;
-      link.setAttribute('download', `system-logs-${new Date().toISOString()}.txt`);
+      link.setAttribute('download', `system-logs-${logType}-${new Date().toISOString()}.csv`);
       document.body.appendChild(link);
       link.click();
       link.remove();
     } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to download logs',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
+      handleError(error);
     }
   };
 
-  const getLevelColor = (level: string) => {
-    switch (level) {
-      case 'ERROR':
-        return 'red';
-      case 'WARNING':
-        return 'yellow';
-      case 'INFO':
-        return 'blue';
-      case 'DEBUG':
-        return 'gray';
-      default:
-        return 'gray';
-    }
+  const getLevelBadge = (level: string) => {
+    const colors: Record<string, string> = {
+      ERROR: 'red',
+      WARNING: 'yellow',
+      INFO: 'blue',
+      DEBUG: 'gray'
+    };
+    return <Badge colorScheme={colors[level]}>{level}</Badge>;
   };
 
-  if (error) {
-    return <ErrorAlert message={error} />;
-  }
+  const filteredLogs = logs.filter(log => 
+    log.message.toLowerCase().includes(filter.toLowerCase()) ||
+    log.source.toLowerCase().includes(filter.toLowerCase())
+  );
+
+  if (isLoading) return <LoadingSpinner message="Loading logs..." />;
 
   return (
-    <VStack spacing={4} align="stretch">
-      <Flex gap={4} wrap="wrap">
-        <HStack>
-          <Text>Log Type:</Text>
+    <Box bg={bgColor} p={4} borderRadius="lg" shadow="sm">
+      <VStack spacing={4} align="stretch">
+        <HStack spacing={4}>
           <Select
             value={logType}
             onChange={(e) => setLogType(e.target.value)}
-            width="200px"
+            w="200px"
           >
-            {LOG_TYPES.map(type => (
-              <option key={type.value} value={type.value}>
-                {type.label}
-              </option>
-            ))}
+            <option value="app">Application Logs</option>
+            <option value="audit">Audit Logs</option>
+            <option value="error">Error Logs</option>
+            <option value="access">Access Logs</option>
           </Select>
-        </HStack>
 
-        <HStack>
-          <Text>Time Period:</Text>
           <Select
-            value={timePeriod}
-            onChange={(e) => setTimePeriod(e.target.value)}
-            width="200px"
+            value={days}
+            onChange={(e) => setDays(Number(e.target.value))}
+            w="150px"
           >
-            {TIME_PERIODS.map(period => (
-              <option key={period.value} value={period.value}>
-                {period.label}
-              </option>
-            ))}
+            <option value={1}>Last 24 hours</option>
+            <option value={7}>Last 7 days</option>
+            <option value={30}>Last 30 days</option>
+            <option value={90}>Last 90 days</option>
           </Select>
-        </HStack>
 
-        <Spacer />
+          <Input
+            placeholder="Filter logs..."
+            value={filter}
+            onChange={(e) => setFilter(e.target.value)}
+            flex={1}
+          />
 
-        <HStack>
           <Button
             leftIcon={<RepeatIcon />}
-            onClick={loadLogs}
-            isLoading={isLoading}
+            onClick={fetchLogs}
           >
             Refresh
           </Button>
+
           <Button
             leftIcon={<DownloadIcon />}
-            onClick={handleDownload}
-            colorScheme="brand"
+            onClick={handleExport}
           >
-            Download
+            Export
           </Button>
         </HStack>
-      </Flex>
 
-      {isLoading ? (
-        <LoadingSpinner message="Loading logs..." />
-      ) : (
-        <Box
-          borderWidth={1}
-          borderRadius="md"
-          p={4}
-          maxH="600px"
-          overflowY="auto"
-          fontFamily="mono"
-        >
-          {logs.length === 0 ? (
-            <Text color="gray.500" textAlign="center">No logs found</Text>
-          ) : (
-            <VStack spacing={2} align="stretch">
-              {logs.map((log, index) => (
-                <Box key={index} fontSize="sm">
-                  <HStack spacing={2} mb={1}>
-                    <Text color="gray.500">
-                      {new Date(log.timestamp).toLocaleString()}
-                    </Text>
-                    <Badge colorScheme={getLevelColor(log.level)}>
-                      {log.level}
-                    </Badge>
-                    <Text color="gray.500">[{log.source}]</Text>
-                  </HStack>
-                  <Code
-                    display="block"
-                    whiteSpace="pre-wrap"
-                    p={2}
-                    borderRadius="md"
-                  >
-                    {log.message}
-                  </Code>
-                </Box>
+        <Box overflowX="auto">
+          <Table variant="simple">
+            <Thead>
+              <Tr>
+                <Th>Timestamp</Th>
+                <Th>Level</Th>
+                <Th>Source</Th>
+                <Th>Message</Th>
+              </Tr>
+            </Thead>
+            <Tbody>
+              {filteredLogs.map((log, index) => (
+                <Tr key={index}>
+                  <Td whiteSpace="nowrap">
+                    {new Date(log.timestamp).toLocaleString()}
+                  </Td>
+                  <Td>{getLevelBadge(log.level)}</Td>
+                  <Td>{log.source}</Td>
+                  <Td>
+                    <Text>{log.message}</Text>
+                    {log.details && (
+                      <Text fontSize="sm" color="gray.500" mt={1}>
+                        {log.details}
+                      </Text>
+                    )}
+                  </Td>
+                </Tr>
               ))}
-            </VStack>
-          )}
+            </Tbody>
+          </Table>
         </Box>
-      )}
-    </VStack>
+
+        {filteredLogs.length === 0 && (
+          <Text textAlign="center" color="gray.500" py={8}>
+            No logs found matching your criteria
+          </Text>
+        )}
+      </VStack>
+    </Box>
   );
 } 

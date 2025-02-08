@@ -1,430 +1,294 @@
 import React, { useState, useEffect } from 'react';
 import {
-  Card,
-  CardHeader,
-  CardBody,
-  Heading,
+  Box,
+  Button,
   VStack,
   HStack,
-  Button,
-  Text,
-  Box,
-  useColorModeValue,
   Table,
   Thead,
   Tbody,
   Tr,
   Th,
   Td,
-  Badge,
   useToast,
+  Badge,
   IconButton,
-  Menu,
-  MenuButton,
-  MenuList,
-  MenuItem,
-  Alert,
-  AlertIcon,
-  Progress,
+  useColorModeValue,
   Modal,
   ModalOverlay,
   ModalContent,
   ModalHeader,
   ModalBody,
   ModalFooter,
-  ModalCloseButton,
   useDisclosure,
   FormControl,
   FormLabel,
   Input,
   Textarea,
-  Select,
 } from '@chakra-ui/react';
-import {
-  DownloadIcon,
-  RepeatIcon,
-  ChevronDownIcon,
-  DeleteIcon,
-  InfoIcon,
-  WarningIcon,
-} from '@chakra-ui/icons';
-import { CompareIcon } from '../icons/CompareIcon';
+import { DownloadIcon, RepeatIcon, DeleteIcon, AddIcon } from '@chakra-ui/icons';
 import api from '../../utils/api';
-import BackupDiffViewer from './BackupDiffViewer';
-import { BackupEntry } from '../../types';
+import { useApiError } from '../../utils/api';
+import LoadingSpinner from '../common/LoadingSpinner';
 
-interface RestoreOptions {
-  backupId: string;
-  selectedDevices: string[];
-  dryRun: boolean;
-  comment: string;
+interface Backup {
+  id: string;
+  filename: string;
+  timestamp: string;
+  size: string;
+  type: 'manual' | 'automatic';
+  comment?: string;
+  created_by: string;
+  devices: string[];
 }
 
 export default function ConfigBackupRestore() {
-  const [backups, setBackups] = useState<BackupEntry[]>([]);
+  const [backups, setBackups] = useState<Backup[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-  const [isBackingUp, setIsBackingUp] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedBackup, setSelectedBackup] = useState<BackupEntry | null>(null);
-  const [restoreOptions, setRestoreOptions] = useState<RestoreOptions>({
-    backupId: '',
-    selectedDevices: [],
-    dryRun: true,
-    comment: '',
-  });
-  const [showDiffViewer, setShowDiffViewer] = useState(false);
-  const [selectedBackupForDiff, setSelectedBackupForDiff] = useState<BackupEntry | null>(null);
-
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [comment, setComment] = useState('');
   const { isOpen, onOpen, onClose } = useDisclosure();
   const toast = useToast();
+  const { handleError } = useApiError();
   const bgColor = useColorModeValue('white', 'gray.800');
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
 
-  useEffect(() => {
-    loadBackups();
-  }, []);
-
-  const loadBackups = async () => {
+  const fetchBackups = React.useCallback(async () => {
+    setIsLoading(true);
     try {
       const response = await api.get('/api/admin/backups');
-      if (response.data.status === 'success') {
-        setBackups(response.data.backups);
-      }
+      setBackups(response.data.backups);
     } catch (error) {
-      setError('Failed to load backups');
+      handleError(error);
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [handleError]);
 
-  const handleBackup = async () => {
-    setIsBackingUp(true);
+  useEffect(() => {
+    fetchBackups();
+  }, [fetchBackups]);
+
+  const handleCreateBackup = async () => {
     try {
-      const response = await api.post('/api/admin/backups/create', {
-        type: 'manual',
-        comment: 'Manual backup',
+      await api.post('/api/admin/backups', {
+        comment,
+        type: 'manual'
       });
-
-      if (response.data.status === 'success') {
-        toast({
-          title: 'Success',
-          description: 'Backup created successfully',
-          status: 'success',
-          duration: 5000,
-          isClosable: true,
-        });
-        loadBackups();
-      }
-    } catch (error) {
       toast({
-        title: 'Error',
-        description: 'Failed to create backup',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
+        title: 'Success',
+        description: 'Backup created successfully',
+        status: 'success',
+        duration: 3000,
       });
-    } finally {
-      setIsBackingUp(false);
+      fetchBackups();
+      onClose();
+    } catch (error) {
+      handleError(error);
     }
   };
 
-  const handleDownload = async (backup: BackupEntry) => {
+  const handleRestore = async (backupId: string) => {
     try {
-      const response = await api.get(`/api/admin/backups/${backup.id}/download`, {
-        responseType: 'blob',
-      });
-
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `backup-${backup.timestamp}.zip`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
-    } catch (error) {
+      await api.post(`/api/admin/backups/${backupId}/restore`);
       toast({
-        title: 'Error',
-        description: 'Failed to download backup',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
+        title: 'Success',
+        description: 'Configuration restored successfully',
+        status: 'success',
+        duration: 3000,
       });
+    } catch (error) {
+      handleError(error);
     }
   };
 
-  const handleDelete = async (backup: BackupEntry) => {
+  const handleDelete = async (backupId: string) => {
     try {
-      await api.delete(`/api/admin/backups/${backup.id}`);
+      await api.delete(`/api/admin/backups/${backupId}`);
       toast({
         title: 'Success',
         description: 'Backup deleted successfully',
         status: 'success',
-        duration: 5000,
-        isClosable: true,
+        duration: 3000,
       });
-      loadBackups();
+      fetchBackups();
     } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to delete backup',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
-      });
+      handleError(error);
     }
   };
 
-  const handleRestore = async () => {
+  const handleDownload = async (backupId: string, filename: string) => {
     try {
-      const response = await api.post('/api/admin/backups/restore', restoreOptions);
-      
-      if (response.data.status === 'success') {
-        toast({
-          title: 'Success',
-          description: restoreOptions.dryRun ? 
-            'Dry run completed successfully' : 
-            'Configuration restored successfully',
-          status: 'success',
-          duration: 5000,
-          isClosable: true,
-        });
-        onClose();
-      }
-    } catch (error) {
-      toast({
-        title: 'Error',
-        description: 'Failed to restore configuration',
-        status: 'error',
-        duration: 5000,
-        isClosable: true,
+      const response = await api.get(`/api/admin/backups/${backupId}/download`, {
+        responseType: 'blob'
       });
+      const url = window.URL.createObjectURL(new Blob([response.data]));
+      const link = document.createElement('a');
+      link.href = url;
+      link.setAttribute('download', filename);
+      document.body.appendChild(link);
+      link.click();
+      link.remove();
+    } catch (error) {
+      handleError(error);
     }
   };
 
-  const getStatusBadge = (status: string) => {
-    const colors: Record<string, string> = {
-      success: 'green',
-      partial: 'yellow',
-      failed: 'red',
-    };
-    return <Badge colorScheme={colors[status]}>{status.toUpperCase()}</Badge>;
+  const handleUpload = async (event: React.ChangeEvent<HTMLInputElement>) => {
+    const file = event.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+    }
   };
+
+  const handleUploadSubmit = async () => {
+    if (!selectedFile) return;
+
+    const formData = new FormData();
+    formData.append('file', selectedFile);
+    formData.append('comment', comment);
+
+    try {
+      await api.post('/api/admin/backups/upload', formData, {
+        headers: {
+          'Content-Type': 'multipart/form-data',
+        },
+      });
+      toast({
+        title: 'Success',
+        description: 'Backup uploaded successfully',
+        status: 'success',
+        duration: 3000,
+      });
+      fetchBackups();
+      onClose();
+    } catch (error) {
+      handleError(error);
+    }
+  };
+
+  if (isLoading) return <LoadingSpinner message="Loading backups..." />;
 
   return (
-    <Card bg={bgColor} borderColor={borderColor}>
-      <CardHeader>
+    <Box bg={bgColor} p={4} borderRadius="lg" shadow="sm">
+      <VStack spacing={4} align="stretch">
         <HStack justify="space-between">
-          <Heading size="md">Configuration Backups</Heading>
           <Button
             leftIcon={<RepeatIcon />}
-            onClick={handleBackup}
-            isLoading={isBackingUp}
-            colorScheme="brand"
+            onClick={fetchBackups}
           >
-            Create Backup
+            Refresh
           </Button>
+          <HStack>
+            <Button
+              leftIcon={<AddIcon />}
+              onClick={onOpen}
+            >
+              Upload Backup
+            </Button>
+            <Button
+              colorScheme="brand"
+              onClick={onOpen}
+            >
+              Create Backup
+            </Button>
+          </HStack>
         </HStack>
-      </CardHeader>
-      <CardBody>
-        <VStack spacing={4} align="stretch">
-          {error && (
-            <Alert status="error">
-              <AlertIcon />
-              {error}
-            </Alert>
-          )}
 
-          <Table variant="simple" size="sm">
-            <Thead>
-              <Tr>
-                <Th>Timestamp</Th>
-                <Th>Type</Th>
-                <Th>Author</Th>
-                <Th>Size</Th>
-                <Th>Status</Th>
-                <Th>Version</Th>
-                <Th>Actions</Th>
-              </Tr>
-            </Thead>
-            <Tbody>
-              {backups.map((backup) => (
-                <Tr key={backup.id}>
-                  <Td>
-                    <VStack align="start" spacing={0}>
-                      <Text>{new Date(backup.timestamp).toLocaleString()}</Text>
-                      {backup.comment && (
-                        <Text fontSize="xs" color="gray.500">
-                          {backup.comment}
-                        </Text>
-                      )}
-                    </VStack>
-                  </Td>
-                  <Td>
-                    <Badge>{backup.type}</Badge>
-                  </Td>
-                  <Td>{backup.author}</Td>
-                  <Td>{backup.size}</Td>
-                  <Td>{getStatusBadge(backup.status)}</Td>
-                  <Td>{backup.version}</Td>
-                  <Td>
-                    <HStack spacing={2}>
-                      <IconButton
-                        aria-label="Download backup"
-                        icon={<DownloadIcon />}
-                        size="sm"
-                        onClick={() => handleDownload(backup)}
-                      />
-                      <Menu>
-                        <MenuButton
-                          as={IconButton}
-                          icon={<ChevronDownIcon />}
-                          size="sm"
-                          variant="outline"
-                        />
-                        <MenuList>
-                          <MenuItem
-                            icon={<RepeatIcon />}
-                            onClick={() => {
-                              setSelectedBackup(backup);
-                              setRestoreOptions({
-                                backupId: backup.id,
-                                selectedDevices: backup.devices,
-                                dryRun: true,
-                                comment: '',
-                              });
-                              onOpen();
-                            }}
-                          >
-                            Restore
-                          </MenuItem>
-                          <MenuItem
-                            icon={<CompareIcon />}
-                            onClick={() => {
-                              setSelectedBackupForDiff(backup);
-                              setShowDiffViewer(true);
-                            }}
-                          >
-                            Compare
-                          </MenuItem>
-                          <MenuItem
-                            icon={<InfoIcon />}
-                            onClick={() => {
-                              // Show backup details
-                            }}
-                          >
-                            View Details
-                          </MenuItem>
-                          <MenuItem
-                            icon={<DeleteIcon />}
-                            onClick={() => handleDelete(backup)}
-                            color="red.500"
-                          >
-                            Delete
-                          </MenuItem>
-                        </MenuList>
-                      </Menu>
-                    </HStack>
-                  </Td>
-                </Tr>
-              ))}
-            </Tbody>
-          </Table>
-
-          <Modal isOpen={isOpen} onClose={onClose} size="xl">
-            <ModalOverlay />
-            <ModalContent>
-              <ModalHeader>Restore Configuration</ModalHeader>
-              <ModalCloseButton />
-              <ModalBody>
-                <VStack spacing={4} align="stretch">
-                  <Alert status="warning">
-                    <AlertIcon />
-                    <Text fontSize="sm">
-                      Restoring a configuration will overwrite the current settings.
-                      Consider running a dry run first to review the changes.
-                    </Text>
-                  </Alert>
-
-                  <FormControl>
-                    <FormLabel>Target Devices</FormLabel>
-                    <Select
-                      multiple
-                      value={restoreOptions.selectedDevices}
-                      onChange={(e) => {
-                        const selected = Array.from(e.target.selectedOptions).map(
-                          (option) => option.value
-                        );
-                        setRestoreOptions((prev) => ({
-                          ...prev,
-                          selectedDevices: selected,
-                        }));
-                      }}
+        <Table variant="simple">
+          <Thead>
+            <Tr>
+              <Th>Timestamp</Th>
+              <Th>Filename</Th>
+              <Th>Type</Th>
+              <Th>Size</Th>
+              <Th>Created By</Th>
+              <Th>Comment</Th>
+              <Th>Actions</Th>
+            </Tr>
+          </Thead>
+          <Tbody>
+            {backups.map((backup) => (
+              <Tr key={backup.id}>
+                <Td whiteSpace="nowrap">
+                  {new Date(backup.timestamp).toLocaleString()}
+                </Td>
+                <Td>{backup.filename}</Td>
+                <Td>
+                  <Badge
+                    colorScheme={backup.type === 'automatic' ? 'blue' : 'green'}
+                  >
+                    {backup.type}
+                  </Badge>
+                </Td>
+                <Td>{backup.size}</Td>
+                <Td>{backup.created_by}</Td>
+                <Td>{backup.comment}</Td>
+                <Td>
+                  <HStack spacing={2}>
+                    <IconButton
+                      aria-label="Download backup"
+                      icon={<DownloadIcon />}
+                      size="sm"
+                      onClick={() => handleDownload(backup.id, backup.filename)}
+                    />
+                    <Button
+                      size="sm"
+                      onClick={() => handleRestore(backup.id)}
                     >
-                      {selectedBackup?.devices.map((device) => (
-                        <option key={device} value={device}>
-                          {device}
-                        </option>
-                      ))}
-                    </Select>
-                  </FormControl>
-
-                  <FormControl>
-                    <FormLabel>Comment</FormLabel>
-                    <Textarea
-                      value={restoreOptions.comment}
-                      onChange={(e) =>
-                        setRestoreOptions((prev) => ({
-                          ...prev,
-                          comment: e.target.value,
-                        }))
-                      }
-                      placeholder="Add a comment about this restore operation"
+                      Restore
+                    </Button>
+                    <IconButton
+                      aria-label="Delete backup"
+                      icon={<DeleteIcon />}
+                      size="sm"
+                      colorScheme="red"
+                      onClick={() => handleDelete(backup.id)}
                     />
-                  </FormControl>
+                  </HStack>
+                </Td>
+              </Tr>
+            ))}
+          </Tbody>
+        </Table>
+      </VStack>
 
-                  <FormControl display="flex" alignItems="center">
-                    <FormLabel mb="0">Dry Run</FormLabel>
-                    <Input
-                      type="checkbox"
-                      checked={restoreOptions.dryRun}
-                      onChange={(e) =>
-                        setRestoreOptions((prev) => ({
-                          ...prev,
-                          dryRun: e.target.checked,
-                        }))
-                      }
-                    />
-                  </FormControl>
-                </VStack>
-              </ModalBody>
-
-              <ModalFooter>
-                <Button variant="ghost" mr={3} onClick={onClose}>
-                  Cancel
-                </Button>
-                <Button
-                  colorScheme={restoreOptions.dryRun ? 'blue' : 'red'}
-                  onClick={handleRestore}
-                >
-                  {restoreOptions.dryRun ? 'Run Dry Run' : 'Restore Configuration'}
-                </Button>
-              </ModalFooter>
-            </ModalContent>
-          </Modal>
-
-          {selectedBackupForDiff && (
-            <BackupDiffViewer
-              isOpen={showDiffViewer}
-              onClose={() => {
-                setShowDiffViewer(false);
-                setSelectedBackupForDiff(null);
-              }}
-              sourceBackup={selectedBackupForDiff}
-              backups={backups}
-            />
-          )}
-        </VStack>
-      </CardBody>
-    </Card>
+      <Modal isOpen={isOpen} onClose={onClose}>
+        <ModalOverlay />
+        <ModalContent>
+          <ModalHeader>Create/Upload Backup</ModalHeader>
+          <ModalBody>
+            <VStack spacing={4}>
+              <FormControl>
+                <FormLabel>Upload Backup File (Optional)</FormLabel>
+                <Input
+                  type="file"
+                  accept=".ucs,.tar.gz"
+                  onChange={handleUpload}
+                />
+              </FormControl>
+              <FormControl>
+                <FormLabel>Comment</FormLabel>
+                <Textarea
+                  value={comment}
+                  onChange={(e) => setComment(e.target.value)}
+                  placeholder="Add a comment about this backup..."
+                />
+              </FormControl>
+            </VStack>
+          </ModalBody>
+          <ModalFooter>
+            <Button variant="ghost" mr={3} onClick={onClose}>
+              Cancel
+            </Button>
+            <Button
+              colorScheme="brand"
+              onClick={selectedFile ? handleUploadSubmit : handleCreateBackup}
+            >
+              {selectedFile ? 'Upload' : 'Create'}
+            </Button>
+          </ModalFooter>
+        </ModalContent>
+      </Modal>
+    </Box>
   );
 } 
