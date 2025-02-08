@@ -1,16 +1,13 @@
 import React, { useState } from 'react';
 import {
-  Card,
-  CardHeader,
-  CardBody,
-  Heading,
-  VStack,
-  HStack,
-  Select,
-  Button,
-  Text,
   Box,
-  useColorModeValue,
+  Button,
+  Grid,
+  Select,
+  Text,
+  useToast,
+  Heading,
+  HStack,
   Tabs,
   TabList,
   TabPanels,
@@ -20,19 +17,14 @@ import {
   Spinner,
   Alert,
   AlertIcon,
-  Divider,
-  Switch,
   AlertTitle,
   AlertDescription,
   Collapse,
   Spacer,
-  Grid,
-  useToast,
   Textarea,
 } from '@chakra-ui/react';
 import { DiffEditor } from '@monaco-editor/react';
-import { DownloadIcon, ChevronUpIcon, ChevronDownIcon } from '@chakra-ui/icons';
-import { CompareIcon } from '../icons/CompareIcon';
+import { ChevronUpIcon, ChevronDownIcon } from '@chakra-ui/icons';
 import api from '../../utils/api';
 import { useApiError } from '../../utils/api';
 import LoadingSpinner from '../common/LoadingSpinner';
@@ -40,105 +32,40 @@ import LoadingSpinner from '../common/LoadingSpinner';
 interface Device {
   id: number;
   name: string;
-  host: string;
 }
 
 interface ConfigVersion {
   id: string;
   timestamp: string;
-  author: string;
   comment?: string;
 }
 
 interface ComparisonResult {
-  differences: {
-    virtualServers: DiffSection[];
-    pools: DiffSection[];
-    monitors: DiffSection[];
-    profiles: DiffSection[];
-    irules: DiffSection[];
-    policies: DiffSection[];
-    certificates: DiffSection[];
-    dataGroups: DiffSection[];
-    nodes: DiffSection[];
-  };
-  summary: {
-    total: number;
-    added: number;
-    modified: number;
-    removed: number;
-    securityImpact: boolean;
-    serviceImpact: boolean;
-  };
-  analysis: {
-    securityChanges: AnalysisItem[];
-    serviceImpacts: AnalysisItem[];
-    recommendations: AnalysisItem[];
-  };
-}
-
-interface DiffSection {
-  type: 'added' | 'modified' | 'removed';
-  name: string;
-  oldConfig?: string;
-  newConfig: string;
-}
-
-interface AnalysisItem {
-  type: 'warning' | 'info' | 'critical';
-  message: string;
-  details: string;
-  affectedObjects: string[];
+  sections: {
+    name: string;
+    differences: {
+      type: 'added' | 'removed' | 'modified';
+      line: string;
+      lineNumber: number;
+    }[];
+  }[];
 }
 
 export default function ConfigComparison() {
   const [sourceDevice, setSourceDevice] = useState<string>('');
   const [targetDevice, setTargetDevice] = useState<string>('');
-  const [sourceVersion, setSourceVersion] = useState<string>('current');
-  const [targetVersion, setTargetVersion] = useState<string>('current');
   const [devices, setDevices] = useState<Device[]>([]);
-  const [versions, setVersions] = useState<Record<string, ConfigVersion[]>>({});
-  const [comparison, setComparison] = useState<ComparisonResult | null>(null);
-  const [isLoading, setIsLoading] = useState(false);
-  const [error, setError] = useState<string | null>(null);
-  const [selectedSection, setSelectedSection] = useState<string>('virtualServers');
-  const [showAnalysis, setShowAnalysis] = useState(false);
-  const [filterSecurityChanges, setFilterSecurityChanges] = useState(false);
-  const [filterServiceImpacts, setFilterServiceImpacts] = useState(false);
   const [originalConfig, setOriginalConfig] = useState<string>('');
   const [modifiedConfig, setModifiedConfig] = useState<string>('');
+  const [isLoading, setIsLoading] = useState(false);
+  const [sourceVersion, setSourceVersion] = useState<string>('');
+  const [targetVersion, setTargetVersion] = useState<string>('');
+  const [versions, setVersions] = useState<ConfigVersion[]>([]);
+  const [comparison, setComparison] = useState<ComparisonResult | null>(null);
   const toast = useToast();
   const { handleError } = useApiError();
-
-  const bgColor = useColorModeValue('white', 'gray.800');
-  const borderColor = useColorModeValue('gray.200', 'gray.700');
-
-  const loadDevices = async () => {
-    try {
-      const response = await api.get('/api/admin/devices');
-      if (response.data.status === 'success') {
-        setDevices(response.data.devices);
-      }
-    } catch (error) {
-      setError('Failed to load devices');
-    }
-  };
-
-  const loadVersions = async (deviceId: string) => {
-    if (!deviceId || deviceId === 'current') return;
-    
-    try {
-      const response = await api.get(`/api/admin/devices/${deviceId}/configs`);
-      if (response.data.status === 'success') {
-        setVersions(prev => ({
-          ...prev,
-          [deviceId]: response.data.versions,
-        }));
-      }
-    } catch (error) {
-      setError('Failed to load configuration versions');
-    }
-  };
+  const [selectedSection, setSelectedSection] = useState<string | null>(null);
+  const [showAnalysis, setShowAnalysis] = useState(false);
 
   const handleCompare = async () => {
     if (!sourceDevice || !targetDevice) {
@@ -153,13 +80,16 @@ export default function ConfigComparison() {
 
     setIsLoading(true);
     try {
-      const [sourceResponse, targetResponse] = await Promise.all([
-        api.get(`/api/devices/${sourceDevice}/config`),
-        api.get(`/api/devices/${targetDevice}/config`),
-      ]);
+      const response = await api.post('/api/admin/compare-configs', {
+        source_device: sourceDevice,
+        target_device: targetDevice,
+        source_version: sourceVersion || undefined,
+        target_version: targetVersion || undefined,
+      });
 
-      setOriginalConfig(sourceResponse.data.config);
-      setModifiedConfig(targetResponse.data.config);
+      setOriginalConfig(response.data.source_config);
+      setModifiedConfig(response.data.target_config);
+      setComparison(response.data.analysis);
     } catch (error) {
       handleError(error);
     } finally {
@@ -167,234 +97,207 @@ export default function ConfigComparison() {
     }
   };
 
-  const handleExport = async () => {
-    if (!comparison) return;
-
+  const loadDevices = React.useCallback(async () => {
     try {
-      const response = await api.get('/api/admin/configs/compare/export', {
-        params: {
-          sourceDevice,
-          targetDevice,
-          sourceVersion,
-          targetVersion,
-        },
-        responseType: 'blob',
-      });
-
-      const url = window.URL.createObjectURL(new Blob([response.data]));
-      const link = document.createElement('a');
-      link.href = url;
-      link.setAttribute('download', `config-comparison-${new Date().toISOString()}.html`);
-      document.body.appendChild(link);
-      link.click();
-      link.remove();
+      const response = await api.get('/api/devices');
+      setDevices(response.data);
     } catch (error) {
-      setError('Failed to export comparison');
+      handleError(error);
+    }
+  }, [handleError]);
+
+  const loadVersions = async (deviceId: string) => {
+    try {
+      const response = await api.get(`/api/admin/config-versions/${deviceId}`);
+      setVersions(response.data.versions);
+    } catch (error) {
+      handleError(error);
     }
   };
 
-  const getSectionCount = (section: string) => {
+  React.useEffect(() => {
+    loadDevices();
+  }, [loadDevices]);
+
+  React.useEffect(() => {
+    if (sourceDevice) {
+      loadVersions(sourceDevice);
+    }
+  }, [sourceDevice]);
+
+  const getSectionCount = (type: 'added' | 'removed' | 'modified') => {
     if (!comparison) return 0;
-    return comparison.differences[section as keyof typeof comparison.differences].length;
+    return comparison.sections.reduce((count, section) => {
+      return count + section.differences.filter(d => d.type === type).length;
+    }, 0);
   };
 
-  const getDiffBadge = (type: string) => {
-    const colors: Record<string, string> = {
+  const getDiffBadge = (type: 'added' | 'removed' | 'modified') => {
+    const count = getSectionCount(type);
+    const colors = {
       added: 'green',
-      modified: 'yellow',
       removed: 'red',
+      modified: 'yellow'
     };
-    return <Badge colorScheme={colors[type]}>{type.toUpperCase()}</Badge>;
+    return count > 0 ? (
+      <Badge colorScheme={colors[type]} ml={2}>
+        {count} {type}
+      </Badge>
+    ) : null;
   };
 
   const renderAnalysis = () => {
-    if (!comparison?.analysis) return null;
+    if (!comparison) return null;
 
     return (
-      <VStack spacing={4} align="stretch">
-        <HStack>
-          <Heading size="sm">Configuration Analysis</Heading>
-          <Spacer />
-          <Switch
-            isChecked={filterSecurityChanges}
-            onChange={(e) => setFilterSecurityChanges(e.target.checked)}
-            mr={2}
-          >
-            Security Changes
-          </Switch>
-          <Switch
-            isChecked={filterServiceImpacts}
-            onChange={(e) => setFilterServiceImpacts(e.target.checked)}
-          >
-            Service Impacts
-          </Switch>
-        </HStack>
-
-        {comparison.analysis.securityChanges.length > 0 && filterSecurityChanges && (
-          <Box>
-            <Text fontWeight="medium" mb={2}>Security Changes</Text>
-            <VStack spacing={2} align="stretch">
-              {comparison.analysis.securityChanges.map((item, index) => (
-                <Alert
-                  key={index}
-                  status={item.type === 'critical' ? 'error' : 'warning'}
-                  variant="left-accent"
+      <Box mt={4}>
+        <Button
+          rightIcon={showAnalysis ? <ChevronUpIcon /> : <ChevronDownIcon />}
+          onClick={() => setShowAnalysis(!showAnalysis)}
+          mb={2}
+        >
+          Configuration Analysis
+        </Button>
+        <Collapse in={showAnalysis}>
+          <Box p={4} borderWidth={1} borderRadius="md">
+            {comparison.sections.map((section, idx) => (
+              <Box key={idx} mb={4}>
+                <Button
+                  variant="link"
+                  onClick={() => setSelectedSection(section.name)}
+                  mb={2}
                 >
-                  <VStack align="stretch" spacing={1}>
-                    <AlertTitle>{item.message}</AlertTitle>
-                    <AlertDescription fontSize="sm">
-                      {item.details}
-                      {item.affectedObjects.length > 0 && (
-                        <Text mt={1}>
-                          Affected objects: {item.affectedObjects.join(', ')}
-                        </Text>
-                      )}
-                    </AlertDescription>
-                  </VStack>
-                </Alert>
-              ))}
-            </VStack>
+                  {section.name}
+                </Button>
+                {getDiffBadge('added')}
+                {getDiffBadge('removed')}
+                {getDiffBadge('modified')}
+                {selectedSection === section.name && (
+                  <Box pl={4}>
+                    {section.differences.map((diff, i) => (
+                      <Text
+                        key={i}
+                        color={
+                          diff.type === 'added'
+                            ? 'green.500'
+                            : diff.type === 'removed'
+                            ? 'red.500'
+                            : 'yellow.500'
+                        }
+                      >
+                        {diff.type}: Line {diff.lineNumber} - {diff.line}
+                      </Text>
+                    ))}
+                  </Box>
+                )}
+              </Box>
+            ))}
           </Box>
-        )}
-
-        {comparison.analysis.serviceImpacts.length > 0 && filterServiceImpacts && (
-          <Box>
-            <Text fontWeight="medium" mb={2}>Service Impacts</Text>
-            <VStack spacing={2} align="stretch">
-              {comparison.analysis.serviceImpacts.map((item, index) => (
-                <Alert
-                  key={index}
-                  status={item.type === 'critical' ? 'error' : 'warning'}
-                  variant="left-accent"
-                >
-                  <VStack align="stretch" spacing={1}>
-                    <AlertTitle>{item.message}</AlertTitle>
-                    <AlertDescription fontSize="sm">
-                      {item.details}
-                      {item.affectedObjects.length > 0 && (
-                        <Text mt={1}>
-                          Affected objects: {item.affectedObjects.join(', ')}
-                        </Text>
-                      )}
-                    </AlertDescription>
-                  </VStack>
-                </Alert>
-              ))}
-            </VStack>
-          </Box>
-        )}
-
-        {comparison.analysis.recommendations.length > 0 && (
-          <Box>
-            <Text fontWeight="medium" mb={2}>Recommendations</Text>
-            <VStack spacing={2} align="stretch">
-              {comparison.analysis.recommendations.map((item, index) => (
-                <Alert key={index} status="info" variant="left-accent">
-                  <AlertDescription>{item.message}</AlertDescription>
-                </Alert>
-              ))}
-            </VStack>
-          </Box>
-        )}
-      </VStack>
+        </Collapse>
+      </Box>
     );
   };
 
-  if (isLoading) return <LoadingSpinner message="Loading configurations..." />;
+  if (isLoading) {
+    return <LoadingSpinner />;
+  }
 
   return (
-    <Card bg={bgColor} borderColor={borderColor}>
-      <CardHeader>
-        <HStack justify="space-between">
-          <Heading size="md">Configuration Comparison</Heading>
-          {comparison && (
-            <Button
-              leftIcon={<DownloadIcon />}
-              onClick={handleExport}
-              size="sm"
-              colorScheme="brand"
-            >
-              Export Report
-            </Button>
-          )}
-        </HStack>
-      </CardHeader>
-      <CardBody>
-        <VStack spacing={4} align="stretch">
-          <Grid templateColumns="repeat(2, 1fr)" gap={6} mb={6}>
-            <Box>
-              <Text mb={2}>Source Device</Text>
-              <Select
-                value={sourceDevice}
-                onChange={(e) => {
-                  setSourceDevice(e.target.value);
-                  loadVersions(e.target.value);
-                }}
-                placeholder="Select source device"
-              >
-                {devices.map(device => (
-                  <option key={device.id} value={device.id}>
-                    {device.name} ({device.host})
-                  </option>
-                ))}
-              </Select>
-            </Box>
-            <Box>
-              <Text mb={2}>Target Device</Text>
-              <Select
-                value={targetDevice}
-                onChange={(e) => {
-                  setTargetDevice(e.target.value);
-                  loadVersions(e.target.value);
-                }}
-                placeholder="Select target device"
-              >
-                {devices.map(device => (
-                  <option key={device.id} value={device.id}>
-                    {device.name} ({device.host})
-                  </option>
-                ))}
-              </Select>
-            </Box>
-          </Grid>
-
-          <Button
-            leftIcon={<CompareIcon />}
-            onClick={handleCompare}
-            isLoading={isLoading}
-            isDisabled={!sourceDevice || !targetDevice}
-            colorScheme="brand"
-          >
-            Compare Configurations
-          </Button>
-
-          {error && (
-            <Alert status="error">
-              <AlertIcon />
-              {error}
-            </Alert>
-          )}
-
-          {originalConfig && modifiedConfig && (
-            <>
-              <Divider />
-              
-              <Box mt={4} height="600px">
-                <DiffEditor
-                  height="100%"
-                  language="shell"
-                  original={originalConfig}
-                  modified={modifiedConfig}
-                  options={{
-                    readOnly: true,
-                    renderSideBySide: true,
-                  }}
-                />
+    <Box>
+      <Heading mb={6}>Configuration Comparison</Heading>
+      <Tabs>
+        <TabList>
+          <Tab>Current Configs</Tab>
+          <Tab>Version History</Tab>
+        </TabList>
+        <TabPanels>
+          <TabPanel>
+            <Grid templateColumns="repeat(2, 1fr)" gap={6} mb={6}>
+              <Box>
+                <Text mb={2}>Source Device</Text>
+                <Select
+                  value={sourceDevice}
+                  onChange={(e) => setSourceDevice(e.target.value)}
+                  placeholder="Select source device"
+                >
+                  {devices.map((device) => (
+                    <option key={device.id} value={device.id}>
+                      {device.name}
+                    </option>
+                  ))}
+                </Select>
               </Box>
-            </>
-          )}
-        </VStack>
-      </CardBody>
-    </Card>
+              <Box>
+                <Text mb={2}>Target Device</Text>
+                <Select
+                  value={targetDevice}
+                  onChange={(e) => setTargetDevice(e.target.value)}
+                  placeholder="Select target device"
+                >
+                  {devices.map((device) => (
+                    <option key={device.id} value={device.id}>
+                      {device.name}
+                    </option>
+                  ))}
+                </Select>
+              </Box>
+            </Grid>
+          </TabPanel>
+          <TabPanel>
+            <Grid templateColumns="repeat(2, 1fr)" gap={6} mb={6}>
+              <Box>
+                <Text mb={2}>Source Version</Text>
+                <Select
+                  value={sourceVersion}
+                  onChange={(e) => setSourceVersion(e.target.value)}
+                  placeholder="Select version"
+                >
+                  {versions.map((version) => (
+                    <option key={version.id} value={version.id}>
+                      {new Date(version.timestamp).toLocaleString()} {version.comment}
+                    </option>
+                  ))}
+                </Select>
+              </Box>
+              <Box>
+                <Text mb={2}>Target Version</Text>
+                <Select
+                  value={targetVersion}
+                  onChange={(e) => setTargetVersion(e.target.value)}
+                  placeholder="Select version"
+                >
+                  {versions.map((version) => (
+                    <option key={version.id} value={version.id}>
+                      {new Date(version.timestamp).toLocaleString()} {version.comment}
+                    </option>
+                  ))}
+                </Select>
+              </Box>
+            </Grid>
+          </TabPanel>
+        </TabPanels>
+      </Tabs>
+
+      <Button onClick={handleCompare} mb={6}>
+        Compare Configurations
+      </Button>
+
+      {renderAnalysis()}
+
+      {originalConfig && modifiedConfig && (
+        <Box mt={4} height="600px">
+          <DiffEditor
+            height="100%"
+            language="shell"
+            original={originalConfig}
+            modified={modifiedConfig}
+            options={{
+              readOnly: true,
+              renderSideBySide: true,
+            }}
+          />
+        </Box>
+      )}
+    </Box>
   );
 } 

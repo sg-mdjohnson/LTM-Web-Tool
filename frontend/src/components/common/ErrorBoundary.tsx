@@ -17,6 +17,36 @@ interface State {
   error: Error | null;
 }
 
+// Separate functional component for error UI
+function ErrorFallback({ error, resetErrorBoundary }: { 
+  error: Error | null; 
+  resetErrorBoundary: () => void;
+}) {
+  const bgColor = useColorModeValue('white', 'gray.800');
+  
+  return (
+    <Box
+      p={8}
+      maxW="xl"
+      mx="auto"
+      textAlign="center"
+      bg={bgColor}
+      rounded="lg"
+      shadow="base"
+    >
+      <VStack spacing={4}>
+        <Heading size="lg">Something went wrong</Heading>
+        <Text color="gray.500">
+          {error?.message || 'An unexpected error occurred'}
+        </Text>
+        <Button onClick={resetErrorBoundary}>
+          Try again
+        </Button>
+      </VStack>
+    </Box>
+  );
+}
+
 export default class ErrorBoundary extends Component<Props, State> {
   public state: State = {
     hasError: false,
@@ -34,33 +64,18 @@ export default class ErrorBoundary extends Component<Props, State> {
     console.error('Uncaught error:', error, errorInfo);
   }
 
+  private handleReset = () => {
+    this.setState({ hasError: false, error: null });
+    window.location.reload();
+  };
+
   public render() {
     if (this.state.hasError) {
       return (
-        <Box
-          p={8}
-          maxW="xl"
-          mx="auto"
-          textAlign="center"
-          bg={useColorModeValue('white', 'gray.800')}
-          rounded="lg"
-          shadow="base"
-        >
-          <VStack spacing={4}>
-            <Heading size="lg">Something went wrong</Heading>
-            <Text color="gray.500">
-              {this.state.error?.message || 'An unexpected error occurred'}
-            </Text>
-            <Button
-              onClick={() => {
-                this.setState({ hasError: false, error: null });
-                window.location.reload();
-              }}
-            >
-              Try again
-            </Button>
-          </VStack>
-        </Box>
+        <ErrorFallback 
+          error={this.state.error} 
+          resetErrorBoundary={this.handleReset}
+        />
       );
     }
 

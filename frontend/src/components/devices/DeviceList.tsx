@@ -8,6 +8,7 @@ import {
   Button,
   useDisclosure,
   HStack,
+  Heading,
 } from '@chakra-ui/react';
 import { AddIcon } from '@chakra-ui/icons';
 import api from '../../utils/api';
@@ -17,12 +18,13 @@ import AddDeviceModal from './AddDeviceModal';
 import { Device } from '../../types/device';
 
 export default function DeviceList() {
+  console.log('DeviceList rendering...');
   const [devices, setDevices] = useState<Device[]>([]);
   const [isLoading, setIsLoading] = useState(true);
   const { isOpen, onOpen, onClose } = useDisclosure();
   const toast = useToast();
 
-  const loadDevices = async () => {
+  const loadDevices = React.useCallback(async () => {
     try {
       const response = await api.get('/api/devices');
       if (response.data) {
@@ -40,11 +42,11 @@ export default function DeviceList() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast]);
 
   useEffect(() => {
     loadDevices();
-  }, []);
+  }, [loadDevices]);
 
   const handleDeleteDevice = async (deviceId: number) => {
     try {
@@ -89,45 +91,48 @@ export default function DeviceList() {
   }
 
   return (
-    <VStack spacing={4} align="stretch">
-      <HStack justify="flex-end">
-        <Button
-          leftIcon={<AddIcon />}
-          colorScheme="brand"
-          onClick={onOpen}
-        >
-          Add Device
-        </Button>
-      </HStack>
+    <Box>
+      <Heading mb={4}>Devices</Heading>
+      <VStack spacing={4} align="stretch">
+        <HStack justify="flex-end">
+          <Button
+            leftIcon={<AddIcon />}
+            colorScheme="brand"
+            onClick={onOpen}
+          >
+            Add Device
+          </Button>
+        </HStack>
 
-      {!devices || devices.length === 0 ? (
-        <Box
-          p={8}
-          textAlign="center"
-          borderWidth={1}
-          borderRadius="lg"
-          borderStyle="dashed"
-        >
-          <Text color="gray.500">No devices added yet.</Text>
-        </Box>
-      ) : (
-        <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={4}>
-          {devices.map(device => (
-            <DeviceCard
-              key={device.id}
-              device={device}
-              onDelete={handleDeleteDevice}
-              onTest={handleTestConnection}
-            />
-          ))}
-        </SimpleGrid>
-      )}
+        {!devices || devices.length === 0 ? (
+          <Box
+            p={8}
+            textAlign="center"
+            borderWidth={1}
+            borderRadius="lg"
+            borderStyle="dashed"
+          >
+            <Text color="gray.500">No devices added yet.</Text>
+          </Box>
+        ) : (
+          <SimpleGrid columns={{ base: 1, md: 2, lg: 3 }} spacing={4}>
+            {devices.map(device => (
+              <DeviceCard
+                key={device.id}
+                device={device}
+                onDelete={handleDeleteDevice}
+                onTest={handleTestConnection}
+              />
+            ))}
+          </SimpleGrid>
+        )}
 
-      <AddDeviceModal
-        isOpen={isOpen}
-        onClose={onClose}
-        onAdd={handleAddDevice}
-      />
-    </VStack>
+        <AddDeviceModal
+          isOpen={isOpen}
+          onClose={onClose}
+          onAdd={handleAddDevice}
+        />
+      </VStack>
+    </Box>
   );
 } 

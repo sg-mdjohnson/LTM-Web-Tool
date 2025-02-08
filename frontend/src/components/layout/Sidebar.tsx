@@ -2,52 +2,46 @@ import React from 'react';
 import {
   Box,
   VStack,
-  Link,
+  Text,
   useColorModeValue,
 } from '@chakra-ui/react';
-import { Link as RouterLink, useLocation } from 'react-router-dom';
-import { useAuth } from '../../contexts/AuthContext';
-
-const NavItem = ({ to, children }: { to: string; children: React.ReactNode }) => {
-  const location = useLocation();
-  const isActive = location.pathname === to;
-
-  return (
-    <Link
-      as={RouterLink}
-      to={to}
-      w="full"
-      p={3}
-      borderRadius="md"
-      bg={isActive ? 'brand.500' : 'transparent'}
-      color={isActive ? 'white' : undefined}
-      _hover={{
-        bg: isActive ? 'brand.600' : useColorModeValue('gray.100', 'gray.700'),
-      }}
-    >
-      {children}
-    </Link>
-  );
-};
+import {
+  FiServer,
+  FiSettings,
+  FiDatabase,
+} from 'react-icons/fi';
+import NavItem from './NavItem';
 
 export default function Sidebar() {
-  const { user } = useAuth();
+  const bgColor = useColorModeValue('white', 'gray.800');
 
   return (
     <Box
-      w={60}
-      bg={useColorModeValue('white', 'gray.800')}
-      borderRight={1}
-      borderStyle={'solid'}
-      borderColor={useColorModeValue('gray.200', 'gray.700')}
-      p={4}
+      w={{ base: 'full', md: 60 }}
+      pos="fixed"
+      h="full"
+      bg={bgColor}
+      borderRight="1px"
+      borderRightColor={useColorModeValue('gray.200', 'gray.700')}
     >
-      <VStack spacing={2} align="stretch">
-        <NavItem to="/devices">Devices</NavItem>
-        <NavItem to="/dns">DNS Tools</NavItem>
-        {user?.role === 'admin' && (
-          <NavItem to="/admin">Admin</NavItem>
-        )}
+      <VStack spacing={0} align="stretch">
+        <Box p={5}>
+          <Text fontSize="lg" fontWeight="bold">
+            LTM Web Tool
+          </Text>
+        </Box>
+
+        <NavItem icon={FiServer} to="/devices">
+          Devices
+        </NavItem>
+
+        <NavItem icon={FiDatabase} to="/dns">
+          DNS Tools
+        </NavItem>
+
+        <NavItem icon={FiSettings} to="/admin">
+          Admin
+        </NavItem>
       </VStack>
     </Box>
   );

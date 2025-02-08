@@ -16,19 +16,22 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState(null);
   const [isLoading, setIsLoading] = useState(true);
 
-  const logout = () => {
+  const logout = React.useCallback(() => {
     localStorage.removeItem('token');
     delete api.defaults.headers.common['Authorization'];
     setUser(null);
     setIsAuthenticated(false);
-  };
+  }, []);
 
   const fetchUser = React.useCallback(async () => {
     try {
+      console.log('Fetching user data...');
       const response = await api.get('/api/auth/me');
+      console.log('User data received:', response.data);
       setUser(response.data);
       setIsAuthenticated(true);
-    } catch (error) {
+    } catch (error: any) {
+      console.error('Fetch user error:', error);
       logout();
     } finally {
       setIsLoading(false);
@@ -47,23 +50,26 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
 
   const login = async (username: string, password: string) => {
     try {
-      // Create FormData to match backend expectations
-      const formData = new FormData();
-      formData.append('username', username);
-      formData.append('password', password);
+      console.log('Starting login process...');
+      const params = new URLSearchParams();
+      params.append('username', username);
+      params.append('password', password);
 
-      const response = await api.post('/api/auth/login', formData, {
+      const response = await api.post('/api/auth/login', params, {
         headers: {
           'Content-Type': 'application/x-www-form-urlencoded',
         },
       });
+      console.log('Login response:', response.data);
 
       const { access_token } = response.data;
       localStorage.setItem('token', access_token);
       api.defaults.headers.common['Authorization'] = `Bearer ${access_token}`;
+      console.log('Token stored, fetching user data...');
       await fetchUser();
-    } catch (error) {
-      throw new Error('Login failed');
+    } catch (error: any) {
+      console.error('Login error:', error);
+      throw new Error(error.response?.data?.detail || 'Login failed');
     }
   };
 

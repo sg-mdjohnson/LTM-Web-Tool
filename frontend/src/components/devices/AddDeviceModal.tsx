@@ -109,7 +109,7 @@ export default function AddDeviceModal({ isOpen, onClose, onAdd }: Props) {
                   {...register('host', {
                     required: 'Host is required',
                     pattern: {
-                      value: /^(([a-zA-Z0-9]|[a-zA-Z0-9][a-zA-Z0-9\-]*[a-zA-Z0-9])\.)*([A-Za-z0-9]|[A-Za-z0-9][A-Za-z0-9\-]*[A-Za-z0-9])$|^(\d{1,3}\.){3}\d{1,3}$/,
+                      value: /^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/,
                       message: 'Invalid hostname or IP address format'
                     }
                   })}

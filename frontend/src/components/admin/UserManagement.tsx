@@ -18,7 +18,6 @@ import {
 import { AddIcon, EditIcon, DeleteIcon } from '@chakra-ui/icons';
 import api from '../../utils/api';
 import LoadingSpinner from '../common/LoadingSpinner';
-import ErrorAlert from '../common/ErrorAlert';
 import AddUserModal from './AddUserModal';
 import EditUserModal from './EditUserModal';
 import { useApiError } from '../../utils/api';
@@ -36,16 +35,13 @@ export default function UserManagement() {
   const [users, setUsers] = useState<User[]>([]);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const { isOpen: isAddOpen, onOpen: onAddOpen, onClose: onAddClose } = useDisclosure();
+  const { isOpen, onOpen, onClose } = useDisclosure();
   const { isOpen: isEditOpen, onOpen: onEditOpen, onClose: onEditClose } = useDisclosure();
   const toast = useToast();
   const { handleError } = useApiError();
+  const [isModalMounted, setIsModalMounted] = useState(false);
 
-  useEffect(() => {
-    loadUsers();
-  }, []);
-
-  const loadUsers = async () => {
+  const loadUsers = React.useCallback(async () => {
     try {
       const response = await api.get('/api/admin/users');
       if (response.data.status === 'success') {
@@ -61,7 +57,12 @@ export default function UserManagement() {
     } finally {
       setIsLoading(false);
     }
-  };
+  }, [toast, handleError]);
+
+  useEffect(() => {
+    loadUsers();
+    setIsModalMounted(true);
+  }, [loadUsers]);
 
   const handleAddUser = async (userData: Partial<User>) => {
     try {
@@ -75,7 +76,7 @@ export default function UserManagement() {
           isClosable: true,
         });
         loadUsers();
-        onAddClose();
+        onClose();
       }
     } catch (error) {
       toast({
@@ -169,7 +170,7 @@ export default function UserManagement() {
         leftIcon={<AddIcon />}
         colorScheme="brand"
         mb={4}
-        onClick={onAddOpen}
+        onClick={onOpen}
       >
         Add User
       </Button>
@@ -227,11 +228,13 @@ export default function UserManagement() {
         </Tbody>
       </Table>
 
-      <AddUserModal
-        isOpen={isAddOpen}
-        onClose={onAddClose}
-        onSubmit={handleAddUser}
-      />
+      {isModalMounted && (
+        <AddUserModal
+          isOpen={isOpen}
+          onClose={onClose}
+          onSubmit={handleAddUser}
+        />
+      )}
 
       <EditUserModal
         isOpen={isEditOpen}
