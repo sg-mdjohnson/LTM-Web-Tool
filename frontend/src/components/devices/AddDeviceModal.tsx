@@ -4,25 +4,21 @@ import {
   ModalOverlay,
   ModalContent,
   ModalHeader,
-  ModalFooter,
   ModalBody,
-  ModalCloseButton,
+  ModalFooter,
   Button,
+  VStack,
   FormControl,
   FormLabel,
   Input,
-  VStack,
-  Textarea,
-  useToast,
-  FormErrorMessage,
+  useToast
 } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
-import api from '../../utils/api';
+import { useDevices } from '../../hooks/useDevices';
 
-interface Props {
+interface AddDeviceModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onAdd: () => void;
 }
 
 interface FormData {
@@ -30,132 +26,62 @@ interface FormData {
   host: string;
   username: string;
   password: string;
-  description?: string;
 }
 
-export default function AddDeviceModal({ isOpen, onClose, onAdd }: Props) {
-  const {
-    register,
-    handleSubmit,
-    reset,
-    formState: { errors, isSubmitting },
-  } = useForm<FormData>();
-
+export const AddDeviceModal: React.FC<AddDeviceModalProps> = ({ isOpen, onClose }) => {
+  const { register, handleSubmit, reset, formState: { errors, isSubmitting } } = useForm<FormData>();
+  const { addDevice } = useDevices();
   const toast = useToast();
 
   const onSubmit = async (data: FormData) => {
     try {
-      const response = await api.post('/api/devices', {
-        name: data.name,
-        host: data.host,
-        username: data.username,
-        password: data.password,
-        description: data.description || undefined
-      });
-
-      if (response.data.status === 'success') {
-        toast({
-          title: 'Success',
-          description: 'Device added successfully',
-          status: 'success',
-          duration: 5000,
-          isClosable: true,
-        });
-        reset();
-        onAdd();
-        onClose();
-      } else {
-        throw new Error(response.data.message || 'Failed to add device');
-      }
-    } catch (error: any) {
-      console.error('Error adding device:', error);
+      await addDevice(data);
       toast({
-        title: 'Error',
-        description: error.response?.data?.message || error.message || 'Failed to add device',
+        title: 'Device added successfully',
+        status: 'success',
+        duration: 3000,
+      });
+      reset();
+      onClose();
+    } catch (error) {
+      toast({
+        title: 'Failed to add device',
+        description: error.message,
         status: 'error',
         duration: 5000,
-        isClosable: true,
       });
     }
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={onClose} size="md">
+    <Modal isOpen={isOpen} onClose={onClose}>
       <ModalOverlay />
       <ModalContent>
         <form onSubmit={handleSubmit(onSubmit)}>
-          <ModalHeader>Add Device</ModalHeader>
-          <ModalCloseButton />
-          
+          <ModalHeader>Add New Device</ModalHeader>
           <ModalBody>
             <VStack spacing={4}>
-              <FormControl isInvalid={!!errors.name} isRequired>
-                <FormLabel>Name</FormLabel>
-                <Input
-                  {...register('name', {
-                    required: 'Name is required',
-                    minLength: { value: 2, message: 'Minimum length should be 2' }
-                  })}
-                  placeholder="Device name"
-                />
-                <FormErrorMessage>
-                  {errors.name && errors.name.message}
-                </FormErrorMessage>
+              <FormControl isRequired isInvalid={!!errors.name}>
+                <FormLabel>Device Name</FormLabel>
+                <Input {...register('name', { required: 'Name is required' })} />
               </FormControl>
 
-              <FormControl isInvalid={!!errors.host} isRequired>
+              <FormControl isRequired isInvalid={!!errors.host}>
                 <FormLabel>Host</FormLabel>
-                <Input
-                  {...register('host', {
-                    required: 'Host is required',
-                    pattern: {
-                      value: /^[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?(?:\.[a-zA-Z0-9](?:[a-zA-Z0-9-]{0,61}[a-zA-Z0-9])?)*$/,
-                      message: 'Invalid hostname or IP address format'
-                    }
-                  })}
-                  placeholder="hostname or IP address"
-                />
-                <FormErrorMessage>
-                  {errors.host && errors.host.message}
-                </FormErrorMessage>
+                <Input {...register('host', { required: 'Host is required' })} />
               </FormControl>
 
-              <FormControl isInvalid={!!errors.username} isRequired>
+              <FormControl isRequired isInvalid={!!errors.username}>
                 <FormLabel>Username</FormLabel>
-                <Input
-                  {...register('username', {
-                    required: 'Username is required'
-                  })}
-                  placeholder="Enter username"
-                />
-                <FormErrorMessage>
-                  {errors.username && errors.username.message}
-                </FormErrorMessage>
+                <Input {...register('username', { required: 'Username is required' })} />
               </FormControl>
 
-              <FormControl isInvalid={!!errors.password} isRequired>
+              <FormControl isRequired isInvalid={!!errors.password}>
                 <FormLabel>Password</FormLabel>
-                <Input
-                  type="password"
-                  {...register('password', {
-                    required: 'Password is required'
-                  })}
-                  placeholder="Enter password"
+                <Input 
+                  type="password" 
+                  {...register('password', { required: 'Password is required' })} 
                 />
-                <FormErrorMessage>
-                  {errors.password && errors.password.message}
-                </FormErrorMessage>
-              </FormControl>
-
-              <FormControl isInvalid={!!errors.description}>
-                <FormLabel>Description</FormLabel>
-                <Textarea
-                  {...register('description')}
-                  placeholder="Enter device description (optional)"
-                />
-                <FormErrorMessage>
-                  {errors.description && errors.description.message}
-                </FormErrorMessage>
               </FormControl>
             </VStack>
           </ModalBody>
@@ -164,8 +90,8 @@ export default function AddDeviceModal({ isOpen, onClose, onAdd }: Props) {
             <Button variant="ghost" mr={3} onClick={onClose}>
               Cancel
             </Button>
-            <Button
-              colorScheme="brand"
+            <Button 
+              colorScheme="blue" 
               type="submit"
               isLoading={isSubmitting}
             >
@@ -176,4 +102,4 @@ export default function AddDeviceModal({ isOpen, onClose, onAdd }: Props) {
       </ModalContent>
     </Modal>
   );
-} 
+}; 

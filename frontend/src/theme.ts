@@ -9,16 +9,16 @@ const theme = extendTheme({
   config,
   colors: {
     brand: {
-      50: '#e6f6ff',
-      100: '#b3e0ff',
-      200: '#80cbff',
-      300: '#4db5ff',
-      400: '#1a9fff',
-      500: '#0088ff', // Primary brand color
-      600: '#006ecc',
-      700: '#005299',
-      800: '#003666',
-      900: '#001933',
+      50: '#e3f2fd',
+      100: '#bbdefb',
+      200: '#90caf9',
+      300: '#64b5f6',
+      400: '#42a5f5',
+      500: '#2196f3', // Primary brand color
+      600: '#1e88e5',
+      700: '#1976d2',
+      800: '#1565c0',
+      900: '#0d47a1',
     },
   },
   components: {

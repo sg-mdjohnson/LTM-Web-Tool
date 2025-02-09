@@ -1,89 +1,96 @@
-import React, { useEffect } from 'react';
+import React from 'react';
 import {
   Modal,
   ModalOverlay,
   ModalContent,
   ModalHeader,
-  ModalFooter,
   ModalBody,
-  ModalCloseButton,
+  ModalFooter,
   Button,
   FormControl,
   FormLabel,
   Input,
   Select,
-  Switch,
   VStack,
   FormErrorMessage,
+  useToast
 } from '@chakra-ui/react';
 import { useForm } from 'react-hook-form';
+import { User } from '../../types/auth';
+import { useUsers } from '../../hooks/useUsers';
 
-interface User {
-  id: number;
-  username: string;
-  email: string;
-  role: string;
-  is_active: boolean;
-}
-
-interface Props {
+interface EditUserModalProps {
   isOpen: boolean;
   onClose: () => void;
-  onSubmit: (data: Partial<User>) => Promise<void>;
-  user: User | null;
+  user: User;
 }
 
-interface FormInputs {
+interface FormData {
+  username: string;
   email: string;
-  role: string;
-  is_active: boolean;
   password?: string;
+  role: 'admin' | 'user';
 }
 
-export default function EditUserModal({ isOpen, onClose, onSubmit, user }: Props) {
+export const EditUserModal: React.FC<EditUserModalProps> = ({ isOpen, onClose, user }) => {
+  const { updateUser } = useUsers();
+  const toast = useToast();
   const {
     register,
     handleSubmit,
-    reset,
-    formState: { errors, isSubmitting },
-  } = useForm<FormInputs>();
+    formState: { errors, isSubmitting }
+  } = useForm<FormData>({
+    defaultValues: {
+      username: user.username,
+      email: user.email,
+      role: user.role
+    }
+  });
 
-  useEffect(() => {
-    if (user) {
-      reset({
-        email: user.email,
-        role: user.role,
-        is_active: user.is_active,
+  const onSubmit = async (data: FormData) => {
+    try {
+      await updateUser(user.id, data);
+      toast({
+        title: 'User updated successfully',
+        status: 'success',
+        duration: 3000,
+      });
+      onClose();
+    } catch (error) {
+      toast({
+        title: 'Error updating user',
+        description: error.message,
+        status: 'error',
+        duration: 5000,
       });
     }
-  }, [user, reset]);
-
-  const handleClose = () => {
-    reset();
-    onClose();
-  };
-
-  const onSubmitForm = async (data: FormInputs) => {
-    // Only include password if it was changed
-    const submitData = { ...data };
-    if (!submitData.password) {
-      delete submitData.password;
-    }
-    await onSubmit(submitData);
-    handleClose();
   };
 
   return (
-    <Modal isOpen={isOpen} onClose={handleClose}>
+    <Modal isOpen={isOpen} onClose={onClose}>
       <ModalOverlay />
       <ModalContent>
-        <form onSubmit={handleSubmit(onSubmitForm)}>
-          <ModalHeader>Edit User: {user?.username}</ModalHeader>
-          <ModalCloseButton />
-
+        <form onSubmit={handleSubmit(onSubmit)}>
+          <ModalHeader>Edit User</ModalHeader>
           <ModalBody>
             <VStack spacing={4}>
-              <FormControl isInvalid={!!errors.email} isRequired>
+              <FormControl isInvalid={!!errors.username}>
+                <FormLabel>Username</FormLabel>
+                <Input
+                  {...register('username', {
+                    required: 'Username is required',
+                    minLength: {
+                      value: 3,
+                      message: 'Username must be at least 3 characters'
+                    }
+                  })}
+                />
+                <FormErrorMessage>
+                  {errors.username?.message}
+                </FormErrorMessage>
+              </FormControl>
+
+              <FormControl isInvalid={!!errors.email}>
                 <FormLabel>Email</FormLabel>
                 <Input
                   type="email"
@@ -91,61 +98,62 @@ export default function EditUserModal({ isOpen, onClose, onSubmit, user }: Props
                     required: 'Email is required',
                     pattern: {
                       value: /^[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}$/i,
-                      message: 'Invalid email address',
-                    },
+                      message: 'Invalid email address'
+                    }
                   })}
                 />
                 <FormErrorMessage>
-                  {errors.email && errors.email.message}
+                  {errors.email?.message}
                 </FormErrorMessage>
               </FormControl>
 
-              <FormControl>
-                <FormLabel>New Password (optional)</FormLabel>
+              <FormControl isInvalid={!!errors.password}>
+                <FormLabel>Password (leave blank to keep current)</FormLabel>
                 <Input
                   type="password"
                   {...register('password', {
-                    minLength: { value: 6, message: 'Minimum length should be 6' },
+                    minLength: {
+                      value: 8,
+                      message: 'Password must be at least 8 characters'
+                    }
                   })}
-                  placeholder="Leave blank to keep current password"
                 />
                 <FormErrorMessage>
-                  {errors.password && errors.password.message}
+                  {errors.password?.message}
                 </FormErrorMessage>
               </FormControl>
 
-              <FormControl isInvalid={!!errors.role} isRequired>
+              <FormControl isInvalid={!!errors.role}>
                 <FormLabel>Role</FormLabel>
-                <Select {...register('role')}>
+                <Select
+                  {...register('role', {
+                    required: 'Role is required'
+                  })}
+                >
                   <option value="user">User</option>
                   <option value="admin">Admin</option>
                 </Select>
                 <FormErrorMessage>
-                  {errors.role && errors.role.message}
+                  {errors.role?.message}
                 </FormErrorMessage>
-              </FormControl>
-
-              <FormControl>
-                <FormLabel>Active</FormLabel>
-                <Switch {...register('is_active')} />
               </FormControl>
             </VStack>
           </ModalBody>
 
           <ModalFooter>
-            <Button variant="ghost" mr={3} onClick={handleClose}>
+            <Button variant="ghost" mr={3} onClick={onClose}>
               Cancel
             </Button>
             <Button
-              colorScheme="brand"
+              colorScheme="blue"
               type="submit"
               isLoading={isSubmitting}
             >
-              Update User
+              Save Changes
             </Button>
           </ModalFooter>
         </form>
       </ModalContent>
     </Modal>
   );
-} 
+}; 

@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { memo } from 'react';
 import {
   Box,
   VStack,
@@ -12,17 +12,18 @@ import {
 } from 'react-icons/fi';
 import NavItem from './NavItem';
 
-export default function Sidebar() {
+const Sidebar: React.FC = memo(() => {
   const bgColor = useColorModeValue('white', 'gray.800');
 
   return (
     <Box
-      w={{ base: 'full', md: 60 }}
+      w="60"
       pos="fixed"
-      h="full"
+      h="100vh"
       bg={bgColor}
       borderRight="1px"
       borderRightColor={useColorModeValue('gray.200', 'gray.700')}
+      overflowY="auto"
     >
       <VStack spacing={0} align="stretch">
         <Box p={5}>
@@ -31,18 +32,22 @@ export default function Sidebar() {
           </Text>
         </Box>
 
-        <NavItem icon={FiServer} to="/devices">
+        <NavItem icon={FiServer} to="/devices" label="Devices">
           Devices
         </NavItem>
 
-        <NavItem icon={FiDatabase} to="/dns">
+        <NavItem icon={FiDatabase} to="/dns" label="DNS Tools">
           DNS Tools
         </NavItem>
 
-        <NavItem icon={FiSettings} to="/admin">
+        <NavItem icon={FiSettings} to="/admin" label="Admin">
           Admin
         </NavItem>
       </VStack>
     </Box>
   );
-} 
+});
+
+Sidebar.displayName = 'Sidebar';
+
+export default Sidebar; 

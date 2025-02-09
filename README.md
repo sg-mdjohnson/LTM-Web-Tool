@@ -75,7 +75,26 @@ A comprehensive web-based management tool for F5 BIG-IP Local Traffic Manager (L
 - Audit logging
 - Security settings
 
-## Installation
+## Installation & Setup
+
+### Frontend Setup
+```bash
+cd frontend
+npm install
+```
+
+### Running the Application
+```bash
+# Start frontend development server
+cd frontend
+npm start
+```
+
+### Dependencies
+The frontend requires these key dependencies (already in package.json):
+- react-error-boundary: ^5.0.0
+- @chakra-ui/react: ^2.8.2
+- typescript: ^4.9.5
 
 ### Prerequisites
 - Node.js 16+
@@ -90,13 +109,7 @@ git clone https://github.com/yourusername/ltm-web-tool.git
 cd ltm-web-tool
 ```
 
-2. Install frontend dependencies:
-```bash
-cd frontend
-npm install
-```
-
-3. Install backend dependencies:
+2. Install backend dependencies:
 ```bash
 cd ../backend
 pip install -r requirements.txt
@@ -368,3 +381,11 @@ DEBUG=True
 HOST=127.0.0.1
 PORT=8000
 ```
+
+## TODO
+- Device Monitoring Features
+  - Health Dashboard
+  - Traffic Monitoring
+  - Pool Monitoring
+  - Virtual Server Status
+  - Real-time metrics and alerts

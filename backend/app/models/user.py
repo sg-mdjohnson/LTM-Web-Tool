@@ -1,26 +1,44 @@
-from sqlalchemy import Column, Integer, String, Boolean
+from sqlalchemy import Boolean, Column, Integer, String, DateTime, Enum
+import enum
 from sqlalchemy.orm import relationship
-from app.db.base import Base
-from werkzeug.security import generate_password_hash, check_password_hash
+from datetime import datetime
+from app.db.base_class import Base
+from app.core.security import verify_password, get_password_hash
+
+class UserRole(str, enum.Enum):
+    ADMIN = "admin"
+    USER = "user"
+    VIEWER = "viewer"
 
 class User(Base):
     __tablename__ = "users"
 
     id = Column(Integer, primary_key=True, index=True)
-    username = Column(String, unique=True, index=True)
-    email = Column(String, unique=True, index=True)
-    password_hash = Column(String)
-    role = Column(String, default="user")
+    username = Column(String(50), unique=True, index=True, nullable=False)
+    email = Column(String(100), unique=True, index=True, nullable=False)
+    hashed_password = Column(String(255), nullable=False)
     is_active = Column(Boolean, default=True)
-    
-    # User preferences - using SQLAlchemy relationship
-    config = relationship("UserConfig", back_populates="user", uselist=False)
-    
-    def set_password(self, password):
-        self.password_hash = generate_password_hash(password)
+    is_superuser = Column(Boolean, default=False)
+    last_login = Column(DateTime, nullable=True)
+    created_at = Column(DateTime, default=datetime.utcnow, nullable=False)
+    updated_at = Column(DateTime, default=datetime.utcnow, onupdate=datetime.utcnow)
+    role = Column(Enum(UserRole), nullable=False, default=UserRole.USER)
 
-    def check_password(self, password):
-        return check_password_hash(self.password_hash, password)
+    # Relationships
+    devices = relationship("Device", back_populates="owner", cascade="all, delete-orphan")
+    configs = relationship("UserConfig", back_populates="user", uselist=False, cascade="all, delete-orphan")
 
-    def is_admin(self):
-        return self.role == 'admin' 
+    def set_password(self, password: str) -> None:
+        self.hashed_password = get_password_hash(password)
+
+    def check_password(self, password: str) -> bool:
+        return verify_password(password, self.hashed_password)
+
+    def is_admin(self) -> bool:
+        return self.role == UserRole.ADMIN
+
+    def has_permission(self, permission: str) -> bool:
+        if self.is_admin():
+            return True
+        # Add permission checking logic based on role
+        return False 

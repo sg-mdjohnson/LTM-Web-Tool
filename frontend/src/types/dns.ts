@@ -1,15 +1,23 @@
 export interface DNSResult {
-  query: string;
-  type: string;
-  answers: DNSAnswer[];
-  server: string;
-  time: number;
+  status: 'success' | 'error';
   records?: DNSRecord[];
   results?: DNSPropagationResult[];
+  time?: number;
+  answers?: Array<{
+    data: string;
+    ttl: number;
+  }>;
   dnssec?: {
-    validated: boolean;
     secure: boolean;
-    chain?: DNSSECChain[];
+    validated: boolean;
+    chain?: Array<{
+      name: string;
+      type: string;
+      algorithm: string;
+      validFrom: string;
+      validUntil: string;
+      status: 'valid' | 'invalid' | 'warning';
+    }>;
   };
 }
 
@@ -25,6 +33,7 @@ export interface DNSRecord {
   type: string;
   ttl: number;
   data: string[];
+  status: string;
 }
 
 export interface DNSPropagationResult {
@@ -42,4 +51,4 @@ export interface DNSSECChain {
   validFrom: string;
   validUntil: string;
   status: 'valid' | 'invalid' | 'missing';
-} 
+}

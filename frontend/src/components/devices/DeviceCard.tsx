@@ -9,6 +9,7 @@ import {
   IconButton,
   Tooltip,
   VStack,
+  useDisclosure
 } from '@chakra-ui/react';
 import {
   DeleteIcon,
@@ -17,19 +18,22 @@ import {
   WarningIcon,
   CheckCircleIcon,
   NotAllowedIcon,
-  ViewIcon
+  ViewIcon,
+  EditIcon
 } from '@chakra-ui/icons';
 import { Device } from '../../types/device';
+import { EditDeviceModal } from './EditDeviceModal';
+import { DeleteDeviceModal } from './DeleteDeviceModal';
 
-interface Props {
+interface DeviceCardProps {
   device: Device;
-  onDelete: (id: number) => Promise<void>;
-  onTest: (id: number) => Promise<boolean>;
 }
 
-export default function DeviceCard({ device, onDelete, onTest }: Props) {
+export const DeviceCard: React.FC<DeviceCardProps> = ({ device }) => {
   const [isTestingConnection, setIsTestingConnection] = useState(false);
   const [connectionStatus, setConnectionStatus] = useState<'untested' | 'success' | 'failed'>('untested');
+  const editModal = useDisclosure();
+  const deleteModal = useDisclosure();
 
   const bgColor = useColorModeValue('white', 'gray.800');
   const borderColor = useColorModeValue('gray.200', 'gray.700');
@@ -44,16 +48,12 @@ export default function DeviceCard({ device, onDelete, onTest }: Props) {
     }
   };
 
-  const getStatusColor = (status: string | undefined): string => {
+  const getStatusColor = (status: string) => {
     switch (status) {
-      case 'active':
-        return 'green';
-      case 'inactive':
-        return 'yellow';
-      case 'error':
-        return 'red';
-      default:
-        return 'gray';
+      case 'active': return 'green';
+      case 'inactive': return 'gray';
+      case 'error': return 'red';
+      default: return 'yellow';
     }
   };
 
@@ -118,14 +118,21 @@ export default function DeviceCard({ device, onDelete, onTest }: Props) {
                 onClick={handleTestConnection}
               />
             </Tooltip>
+            <Tooltip label="Edit Device">
+              <IconButton
+                aria-label="Edit device"
+                icon={<EditIcon />}
+                size="sm"
+                onClick={editModal.onOpen}
+              />
+            </Tooltip>
             <Tooltip label="Delete Device">
               <IconButton
                 aria-label="Delete device"
                 icon={<DeleteIcon />}
                 size="sm"
                 colorScheme="red"
-                variant="ghost"
-                onClick={() => onDelete(device.id)}
+                onClick={deleteModal.onOpen}
               />
             </Tooltip>
           </HStack>
@@ -138,6 +145,17 @@ export default function DeviceCard({ device, onDelete, onTest }: Props) {
           )}
         </HStack>
       </VStack>
+
+      <EditDeviceModal
+        isOpen={editModal.isOpen}
+        onClose={editModal.onClose}
+        device={device}
+      />
+      <DeleteDeviceModal
+        isOpen={deleteModal.isOpen}
+        onClose={deleteModal.onClose}
+        device={device}
+      />
     </Box>
   );
-} 
+}; 

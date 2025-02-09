@@ -1,33 +1,64 @@
-import React from 'react';
+import React, { memo } from 'react';
+import { useNavigate } from 'react-router-dom';
 import {
   Menu,
   MenuButton,
   MenuList,
   MenuItem,
   Button,
-  useDisclosure,
+  Avatar,
+  Text,
+  HStack,
+  Divider,
+  useColorModeValue,
 } from '@chakra-ui/react';
 import { ChevronDownIcon } from '@chakra-ui/icons';
 import { useAuth } from '../../contexts/AuthContext';
-import ChangePasswordModal from '../auth/ChangePasswordModal';
+import type { User } from '../../types/auth';
 
-export default function UserMenu() {
+const UserMenu: React.FC = memo(() => {
   const { user, logout } = useAuth();
-  const { isOpen, onOpen, onClose } = useDisclosure();
+  const navigate = useNavigate();
+  const menuBg = useColorModeValue('white', 'gray.800');
+
+  if (!user) return null;
+
+  const handleNavigation = (path: string) => {
+    navigate(path);
+  };
 
   return (
-    <>
-      <Menu>
-        <MenuButton as={Button} rightIcon={<ChevronDownIcon />}>
-          {user?.username}
-        </MenuButton>
-        <MenuList>
-          <MenuItem onClick={onOpen}>Change Password</MenuItem>
-          <MenuItem onClick={logout}>Logout</MenuItem>
-        </MenuList>
-      </Menu>
-
-      <ChangePasswordModal isOpen={isOpen} onClose={onClose} />
-    </>
+    <Menu>
+      <MenuButton
+        as={Button}
+        variant="ghost"
+        rightIcon={<ChevronDownIcon />}
+      >
+        <HStack>
+          <Avatar
+            size="sm"
+            name={user.name || user.username}
+            src={user.avatar}
+          />
+          <Text>{user.name || user.username}</Text>
+        </HStack>
+      </MenuButton>
+      <MenuList bg={menuBg}>
+        <MenuItem onClick={() => handleNavigation('/profile')}>
+          Profile
+        </MenuItem>
+        <MenuItem onClick={() => handleNavigation('/settings')}>
+          Settings
+        </MenuItem>
+        <Divider />
+        <MenuItem onClick={logout}>
+          Logout
+        </MenuItem>
+      </MenuList>
+    </Menu>
   );
-} 
+});
+
+UserMenu.displayName = 'UserMenu';
+
+export default UserMenu; 

@@ -1,25 +1,23 @@
-import React from 'react';
-import { Flex, Icon, Link, FlexProps } from '@chakra-ui/react';
-import { Link as RouterLink, useLocation } from 'react-router-dom';
+import React, { memo } from 'react';
+import { Link, useLocation } from 'react-router-dom';
+import { Flex, Icon, Text, useColorModeValue } from '@chakra-ui/react';
 import { IconType } from 'react-icons';
 
-interface NavItemProps extends FlexProps {
+interface NavItemProps {
   icon: IconType;
   to: string;
+  label: string;
   children: React.ReactNode;
 }
 
-export default function NavItem({ icon, to, children, ...rest }: NavItemProps) {
+const NavItem: React.FC<NavItemProps> = memo(({ icon, to, children }) => {
   const location = useLocation();
-  const isActive = location.pathname === to;
+  const isActive = location.pathname.startsWith(to);
+  const activeColor = useColorModeValue('brand.500', 'brand.200');
+  const hoverBg = useColorModeValue('gray.100', 'gray.700');
 
   return (
-    <Link
-      as={RouterLink}
-      to={to}
-      style={{ textDecoration: 'none' }}
-      _focus={{ boxShadow: 'none' }}
-    >
+    <Link to={to}>
       <Flex
         align="center"
         p="4"
@@ -27,23 +25,24 @@ export default function NavItem({ icon, to, children, ...rest }: NavItemProps) {
         borderRadius="lg"
         role="group"
         cursor="pointer"
-        bg={isActive ? 'brand.500' : 'transparent'}
-        color={isActive ? 'white' : 'inherit'}
+        color={isActive ? activeColor : undefined}
+        bg={isActive ? useColorModeValue('gray.100', 'gray.700') : undefined}
         _hover={{
-          bg: 'brand.500',
-          color: 'white',
+          bg: hoverBg,
         }}
-        {...rest}
       >
-        {icon && (
-          <Icon
-            mr="4"
-            fontSize="16"
-            as={icon}
-          />
-        )}
-        {children}
+        <Icon
+          mr="4"
+          fontSize="16"
+          as={icon}
+          aria-hidden="true"
+        />
+        <Text>{children}</Text>
       </Flex>
     </Link>
   );
-} 
+});
+
+NavItem.displayName = 'NavItem';
+
+export default NavItem; 
